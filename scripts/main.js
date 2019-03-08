@@ -98,6 +98,7 @@ class Unit {
 
     applyResults() {
         this.hpDmg = this.tempHpDmg;
+        this.tempHpDmg = 0;
         this.num = this.num - this.losses; // Handle through MATH
         this.losses = 0;
     }
