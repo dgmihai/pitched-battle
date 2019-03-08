@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Battle</title>
+	<link rel="stylesheet" href="styles.css">
+	<link href="styles.css" rel="stylesheet">
+</head>
+
+
+<body>
+<div class="container">
+    <h1>Alright, chaps!</h1>
+    <button type="button" id="addRedUnit" onclick="addUnit('red')">Add Faction One Unit</button>
+    <button type="button" id="addBlueUnit" onclick="addUnit('blue')">Add Faction Two Unit</button>
+    <button type="button" id="rollCombat" onclick="rollCombat()">Roll Combat</button>
+    <button type="button" id="applyCombat" onclick="applyCombat()">Apply Combat</button>
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+
+    <script src="lib/fabric.min.js"></script>
+    <script src="scripts/main.js"></script>
+</div>
+</body>
+
+</html>

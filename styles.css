@@ -1,0 +1,25 @@
+.container {
+    position: fixed; 
+}
+
+.container:before {
+    background-image: url('./img/maptexture.jpg');
+    content: "";
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    left: 0;
+    top: 0;
+    opacity: 0.2;
+    z-index: -1;
+}
+
+.content {
+    position: relative; 
+    z-index: 2;
+}​
+
+h1 {
+    color: red;
+}
