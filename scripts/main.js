@@ -9,6 +9,7 @@ var arr = new Array();
 var temp = 0;
 var unitCount = 0;
 var hoverText;
+var round = 0;
 
 var from;
 var to;
@@ -57,7 +58,7 @@ var Stat = {
 }
 
 class UnitType {
-    constructor(cr, hp, ac, attks, dmg, main, str, dex, con, wis, itl, cha, prf, morale) {
+    constructor(cr, hp, ac, attks, dmg, main, str, dex, con, wis, itl, cha, prf) {
         this.name = name;
         this.cr = cr;
         this.hp = hp;
@@ -72,7 +73,7 @@ class UnitType {
         this.itl = itl;
         this.cha = cha;
         this.prf = prf; //Proficiency
-        this.morale = morale;
+        this.morale = wis+2;
     }
 }
 
@@ -83,13 +84,16 @@ class Unit {
         this.hpDmg = 0;
         this.tempHpDmg = 0;
         this.num = num;
+        this.origNum = num;
         this.losses = 0;
         this.morale = morale;
         this.width = width;
+        this.fitness = "Fit";
+        this.integrity = "Fresh";
     }
 
     addTempDamage(damage) {
-        this.tempHpDmg = this.hpDmg + this.tempHpDmg + damage;
+        this.tempHpDmg = this.tempHpDmg + damage;
     }
 
     addLosses(losses) {
@@ -97,7 +101,7 @@ class Unit {
     }
 
     applyResults() {
-        this.hpDmg = this.tempHpDmg;
+        this.hpDmg = this.hpDmg + this.tempHpDmg;
         this.tempHpDmg = 0;
         this.num = this.num - this.losses; // Handle through MATH
         this.losses = 0;
@@ -144,7 +148,7 @@ class Unit {
 //TEMP
 var swordz = new UnitType(2, 40, 17, 2, 15, Stat.STR,
                           3, 2, 2, 1, 2, 0,
-                          2, 2);
+                          2);
 
 //=====================================================================
 // QUERIES
@@ -303,9 +307,11 @@ function onOver(o) {
         var pointer = canvas.getPointer(o.e);
         if ((hoverText == null || hoverText == undefined) && o.target.stats != undefined) {
             var textInfo =
-                o.target.stats.num + " Troops\n " +
-                o.target.stats.width + " Combat Width\n" + 
-                o.target.stats.hpDmg + " Damage\n";
+                o.target.stats.num + "/" + o.target.stats.origNum + " Troops\n " +
+                Math.min(o.target.stats.num, o.target.stats.width) + " Engaged\n" + 
+                o.target.stats.hpDmg + " Damage\n" +
+                o.target.stats.fitness + "\n" +
+                o.target.stats.integrity;
             hoverText = new fabric.Text(textInfo, {
                 //shadow: 'rgba(256,256,256,1) 0 0 40px',
                 evented: false,
@@ -352,10 +358,6 @@ function onObjScale(o) {
 // DRAWING
 //=====================================================================
 
-function drawHoverText() {
-
-}
-
 // function for drawing a line
 function makeLine(coords, origin) {
     return new fabric.Line(coords, {
@@ -373,7 +375,7 @@ function makeLine(coords, origin) {
 
 function addUnit(faction) {
     var rect = new fabric.Rect({
-        width: 100, height: 80,
+        width: 100, height: 50,
         strokeWidth: 2,
         stroke: 'black',
         fill: faction,
@@ -395,7 +397,7 @@ function addUnit(faction) {
         img.set({
             originX: "center",
             originY: "center",
-            opacity: 0});
+        });
         var unit = new fabric.Group([rect, img]);
         canvas.add(unit);
         units.splice(unitCount, 0, unit);
@@ -403,8 +405,7 @@ function addUnit(faction) {
             'id': unitCount,
             'incomingLines': [],
             'faction': unit.item(0).fill,
-            'stats': stats,
-            'numEngaged': 0});
+            'stats': stats});
         unit.on('mousemove', function(o) {
             if (hoverText != null || hoverText != undefined) {
                 var pointer = canvas.getPointer(o.e);
@@ -497,29 +498,36 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
     // Calculate potential damage
     console.debug("Pot Dmg: " + dmg);
     defender.stats.addTempDamage(factor >= 0 ? dmg : factor >= -1 ? dmg/2 : factor >= -2 ? dmg/4 : 0);
-    console.log("Damage: " + defender.stats.tempHpDmg);
 }
 
 function tallyLosses(unit) {
     // Calculate losses
-    var losses = Math.floor(Math.random() * Math.floor(unit.stats.tempHpDmg/unit.stats.type.hp));
-    var percentHealth = unit.stats.tempHpDmg/(unit.stats.type.hp*unit.stats.num);
-    if (percentHealth > 0.5) {
-        // Vulnerable
-        losses = Math.max(losses, Math.floor(Math.random() * Math.floor(unit.stats.tempHpDmg/unit.stats.type.hp)));
-        if (percentHealth > 0.75) {
-            // Weak
-            losses = losses * 2;
-            if (percentHealth > 1.5) {
-                // Wipeout
-                losses = unit.stats.num;
+    var losses = Math.floor(Math.random() * Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg)/unit.stats.type.hp));
+    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
+    unit.stats.fitness = "Fit";
+    if (percentDamage > 0.1) {
+        // Bloodied
+        unit.stats.fitness = "Bloodied";
+        if (percentDamage > 0.3) {
+            // Ravaged
+            unit.stats.fitness = "Maimed";
+            losses = Math.max(losses, Math.floor(Math.random() * Math.floor(unit.stats.tempHpDmg/unit.stats.type.hp)));
+            if (percentDamage > 0.5) {
+                // Crippled
+                unit.stats.fitness = "Crippled";
+                losses = losses * 2;
+                if (percentDamage > 1.5) {
+                    // Wipeout
+                    unit.stats.fitness = "Destroyed";
+                    losses = unit.stats.num;
+                }
             }
         }
     }
     console.debug("Losses: " + losses);
     unit.stats.addLosses(losses);
     // Adjust HP for losses
-    console.log("Reduced: " + (-1 * losses * unit.stats.type.hp));
+    console.debug("Reduced Damage to Loss: " + (-1 * losses * unit.stats.type.hp));
     unit.stats.addTempDamage(-1 * losses * unit.stats.type.hp);
 }
 
@@ -534,7 +542,26 @@ function applyCombat() {
         unit.scaleToHeight((unit.stats.num-unit.stats.losses)/(unit.stats.width));
         */
         unit.stats.applyResults();
+        var integrityRatio = unit.stats.num/unit.stats.origNum;
+        var integrity =
+            integrityRatio > 0.9 ? 'Fresh' :
+            integrityRatio > 0.7 ? 'Taken Losses' :
+            integrityRatio > 0.5 ? 'Heavy Losses' :
+            integrityRatio > 0.3 ? 'Critical Losses' :
+            'Decimated';
+        //if(integrityRatio == 0) {
+        //    canvas.remove(unit);
+        //    units[unit.id] = null;
+        //}
+        unit.stats.integrity = integrity;
+        var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
+        console.log((1-percentDamage)/2);
+        unit.item(1).set('opacity', (1-percentDamage));
+        unit.item(0).set('opacity', (integrityRatio)/2);
         rollCombat();
     }
     canvas.renderAll();
+    round++;
+    var text = document.getElementById('applyCombat').firstChild;
+    text.data = "Fight: Round " + (round+1);
 }
