@@ -103,6 +103,7 @@ class Unit {
     applyResults() {
         this.hpDmg = this.hpDmg + this.tempHpDmg;
         this.tempHpDmg = 0;
+        console.log("Casualties: " + this.num + ", " + this.losses);
         this.num = this.num - this.losses; // Handle through MATH
         this.losses = 0;
     }
@@ -180,11 +181,11 @@ function getCollisions(x, y) {
 // Syntax: (Originator of connection, Inbound Connection)
 // Ordered pair
 function getConnections(x, y) {
-    if (y === null) {
+    if (y === undefined) {
         // Finding whatever child is connected to
         for (var i = 0; i < connections.length; i++) {
             if (connections[i][0] == x) {
-                return i;
+                return connections[i];
             }
         }
     } else if (x === null) {
@@ -197,6 +198,7 @@ function getConnections(x, y) {
         }
         return ret;
     }
+    return [];
 }
 
 //=====================================================================
@@ -235,7 +237,6 @@ function onObjMove(o) {
         } else {
             if (collision != -1) {
                 collisions.splice(collision, 1);
-
                 rollCombat();
             }
             if (getCollisions(obj.id).length == 0 && getConnections(null, obj.id).length == 0) {
@@ -351,7 +352,7 @@ function onObjScale(o) {
     }
     */
     o.target.setCoords();
-    rollCombat();
+    //rollCombat();
 }
 
 //=====================================================================
@@ -430,21 +431,22 @@ function addUnit(faction) {
 function getAttackingEngagements(unit) {
     var combats = [];
     var melee = getCollisions(unit.id);
-    var ranged = getConnections(null, unit.id);
-    for (let x in melee)
+    var ranged = getConnections(unit.id);
+    for (let x of melee)
         combats.push(collisions[x]);
-    for (let y in ranged)
+    for (let y of ranged) {
         combats.push(connections[y]);
+    }
     return combats;
 }
 
 function getDefendingEngagements(unit) {
     var combats = [];
     var melee = getCollisions(unit.id);
-    var ranged = getConnections(unit.id);
-    for (let x in melee)
+    var ranged = getConnections(null, unit.id);
+    for (let x of melee)
         combats.push(collisions[x]);
-    for (let y in ranged)
+    for (let y of ranged)
         combats.push(connections[y]);
     return combats;
 }
@@ -457,7 +459,7 @@ function rollCombat() {
         var combats = getDefendingEngagements(unit);
         if (combats.length > 0) {
             for (let combat of combats) {
-                var attacker = [0] == unit.id ? units[combat[0]] : units[combat[1]];
+                var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
                 stageAttacks(attacker, unit, getAttackingEngagements(attacker).length);
             }
             tallyLosses(unit);
@@ -555,11 +557,10 @@ function applyCombat() {
         //}
         unit.stats.integrity = integrity;
         var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
-        console.log((1-percentDamage)/2);
         unit.item(1).set('opacity', (1-percentDamage));
         unit.item(0).set('opacity', (integrityRatio)/2);
-        rollCombat();
     }
+    rollCombat();
     canvas.renderAll();
     round++;
     var text = document.getElementById('applyCombat').firstChild;
