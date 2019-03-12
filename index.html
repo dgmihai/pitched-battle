@@ -1,20 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="UTF-8">
-	<title>Battle</title>
-	<link rel="stylesheet" href="styles.css">
-	<link href="styles.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Battle</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="styles.css" rel="stylesheet">
 </head>
 
 
 <body>
 <div class="container">
-    <h1>Alright, chaps! 0.0.3</h1>
-    <button type="button" id="addRedUnit" onclick="addUnit('red')">Add Faction One Unit</button>
-    <button type="button" id="addBlueUnit" onclick="addUnit('blue')">Add Faction Two Unit</button>
-    <button type="button" id="rollCombat" onclick="rollCombat()">Roll Combat</button>
-    <button type="button" id="applyCombat" onclick="applyCombat()">Apply Combat</button>
+    <form>
+        <fieldset>
+            <legend>Alright, chaps! 0.0.4</legend>
+            <p>
+                <input type="checkbox" id="roll" onclick="rollCombat()">Auto-Roll Combat
+                <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
+            </p>
+            <p>
+                <div id="addUnit">
+                    <select id = "unitType">
+                        <option disabled selected value>Unit Type</option>
+                    </select>
+                    <button type="button" id="addRedUnit" onclick="addUnit('red')">Add Faction One Unit</button>
+                    <button type="button" id="addBlueUnit" onclick="addUnit('blue')">Add Faction Two Unit</button>
+                </div>
+
+            </p>
+            <p>
+                <div id="perUnit" style="visibility: hidden;">
+                    <button type="button" id="directDamage" onclick="applyDirectDamage()">Apply</button>
+                    <input type="number" id="directDamageAmt"> damage to 
+                    <input type="number" id="directDamageNum"> members of unit.
+                </div>
+            </p>
+        </fieldset>
+    </form>
     <canvas id="canvas" width="1000" height="1000"></canvas>
 
     <script src="lib/fabric.min.js"></script>

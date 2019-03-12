@@ -42,6 +42,7 @@ canvas.on({
     'mouse:move': onMove,
     'selection:created': onSelection,
     'selection:updated': onSelection,
+    'selection:cleared': onDeselect,
 })
 
 //=====================================================================
@@ -83,6 +84,7 @@ class Unit {
         this.type = type;
         this.hpDmg = 0;
         this.tempHpDmg = 0;
+        this.tempHpApldDmg = 0;
         this.num = num;
         this.origNum = num;
         this.losses = 0;
@@ -96,13 +98,18 @@ class Unit {
         this.tempHpDmg = this.tempHpDmg + damage;
     }
 
+    addTempDirectDamage(damage) {
+        this.tempHpApldDmg = this.tempHpApldDmg + damage;
+    }
+
     addLosses(losses) {
         this.losses = Math.min(losses, this.num);
     }
 
     applyResults() {
-        this.hpDmg = this.hpDmg + this.tempHpDmg;
+        this.hpDmg = this.hpDmg + this.tempHpDmg + this.tempHpApldDmg;
         this.tempHpDmg = 0;
+        this.tempHpApldDmg = 0;
         console.log("Casualties: " + this.num + ", " + this.losses);
         this.num = this.num - this.losses; // Handle through MATH
         this.losses = 0;
@@ -338,8 +345,13 @@ function onOut(o) {
 
 function onSelection(o) {
     o.target.bringToFront();
+    document.getElementById('perUnit').style.visibility="visible";
     if (hoverText != null && hoverText != undefined)
         hoverText.bringToFront();
+}
+
+function onDeselect(o) {
+    document.getElementById('perUnit').style.visibility="hidden";
 }
 
 function onObjScale(o) {
@@ -424,6 +436,30 @@ function addUnit(faction) {
     canvas.requestRenderAll();
 }
 
+function displayLossText(unit) {
+    if(unit.lossText) {
+        canvas.remove(unit.lossText);
+        unit.lossText = null;
+    }
+    unit.setCoords();
+    var coord = unit.getCenterPoint();
+    var txt = unit.stats.num == unit.stats.losses ? "KO" : "-" + unit.stats.losses;
+    unit.lossText = new fabric.Text(txt, {
+        shadow: 'rgba(0,0,0,1) 0 0 40px',
+        selectable: false,
+        fontFamily: 'Impact',
+        stroke: 'white',
+        strokeWidth: 2,
+        fill: unit.faction,
+        //backgroundColor: 'rgba(256,256,256,0.75)',
+        fontSize: 20,
+        left: coord.x-10,
+        top: coord.y-10,
+        evented: false
+    });
+    canvas.add(unit.lossText);
+}
+
 //=====================================================================
 // COMBAT
 //=====================================================================
@@ -456,33 +492,33 @@ function rollCombat() {
         unit.stats.resetStagedResults();
         canvas.remove(unit.lossText);
         unit.lossText = null;
-        var combats = getDefendingEngagements(unit);
-        if (combats.length > 0) {
-            for (let combat of combats) {
-                var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
-                stageAttacks(attacker, unit, getAttackingEngagements(attacker).length);
+        if(document.getElementById('roll').checked == true) {
+            var combats = getDefendingEngagements(unit);
+            if (combats.length > 0) {
+                for (let combat of combats) {
+                    var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
+                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length);
+                }
+                tallyLosses(unit);
+                console.debug(unit.stats.losses);
+                displayLossText(unit);
+
             }
-            tallyLosses(unit);
-            unit.setCoords();
-            var coord = unit.getCenterPoint();
-            console.debug(unit.stats.losses);
-            var txt = unit.stats.num == unit.stats.losses ? "KO" : "-" + unit.stats.losses;
-            unit.lossText = new fabric.Text(txt, {
-                shadow: 'rgba(0,0,0,1) 0 0 40px',
-                selectable: false,
-                fontFamily: 'Impact',
-                stroke: 'white',
-                strokeWidth: 2,
-                fill: unit.faction,
-                //backgroundColor: 'rgba(256,256,256,0.75)',
-                fontSize: 20,
-                left: coord.x-10,
-                top: coord.y-10,
-                evented: false
-            });
-            canvas.add(unit.lossText);
         }
     }
+}
+
+function applyDirectDamage() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    var amount = parseInt(document.getElementById('directDamageAmt').value, 10);
+    var num = parseInt(document.getElementById('directDamageNum').value, 10);
+    selected.stats.addTempDirectDamage(amount);
+    console.log(selected.stats.tempHpApldDmg);
+    tallyLosses(selected, true, num);
+    displayLossText(selected);
 }
 
 function stageAttacks(attacker, defender, split, advantage, roll) {
@@ -502,9 +538,9 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
     defender.stats.addTempDamage(factor >= 0 ? dmg : factor >= -1 ? dmg/2 : factor >= -2 ? dmg/4 : 0);
 }
 
-function tallyLosses(unit) {
+function tallyLosses(unit, direct=false, num=Infinity) {
     // Calculate losses
-    var losses = Math.floor(Math.random() * Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg)/unit.stats.type.hp));
+    var losses = Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num);
     var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
     unit.stats.fitness = "Fit";
     if (percentDamage > 0.1) {
@@ -530,39 +566,49 @@ function tallyLosses(unit) {
     unit.stats.addLosses(losses);
     // Adjust HP for losses
     console.debug("Reduced Damage to Loss: " + (-1 * losses * unit.stats.type.hp));
-    unit.stats.addTempDamage(-1 * losses * unit.stats.type.hp);
+    if(direct) {
+        unit.stats.addTempDirectDamage(-1 * losses * unit.stats.type.hp);
+    } else {
+        unit.stats.addTempDamage(-1 * losses * unit.stats.type.hp);
+    }
 }
 
 function applyCombat() {
     for (let unit of units) {
-        /*
-        rect = unit.item(0);
-        console.log("Area: " + rect.getScaledWidth()*unit.getScaledHeight());
-        console.log(unit.stats.num-unit.stats.losses);///(unit.stats.width));
-        console.log(Math.floor(rect.getScaledWidth()*rect.getScaledHeight()));
-        console.log("Num: " + unit.stats.num-unit.stats.losses);
-        unit.scaleToHeight((unit.stats.num-unit.stats.losses)/(unit.stats.width));
-        */
-        unit.stats.applyResults();
-        var integrityRatio = unit.stats.num/unit.stats.origNum;
-        var integrity =
-            integrityRatio > 0.9 ? 'Fresh' :
-            integrityRatio > 0.7 ? 'Taken Losses' :
-            integrityRatio > 0.5 ? 'Heavy Losses' :
-            integrityRatio > 0.3 ? 'Critical Losses' :
-            'Decimated';
-        //if(integrityRatio == 0) {
-        //    canvas.remove(unit);
-        //    units[unit.id] = null;
-        //}
-        unit.stats.integrity = integrity;
-        var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
-        unit.item(1).set('opacity', (1-percentDamage));
-        unit.item(0).set('opacity', (integrityRatio)/2);
+        applyUnitCombat(unit);
     }
     rollCombat();
     canvas.renderAll();
-    round++;
-    var text = document.getElementById('applyCombat').firstChild;
-    text.data = "Fight: Round " + (round+1);
+    if(document.getElementById('roll').checked == true) {
+        round++;
+        var text = document.getElementById('apply').firstChild;
+        text.data = "Fight: Round " + (round+1);
+    }
+}
+
+function applyUnitCombat(unit) {
+    /*
+    rect = unit.item(0);
+    console.log("Area: " + rect.getScaledWidth()*unit.getScaledHeight());
+    console.log(unit.stats.num-unit.stats.losses);///(unit.stats.width));
+    console.log(Math.floor(rect.getScaledWidth()*rect.getScaledHeight()));
+    console.log("Num: " + unit.stats.num-unit.stats.losses);
+    unit.scaleToHeight((unit.stats.num-unit.stats.losses)/(unit.stats.width));
+    */
+    unit.stats.applyResults();
+    var integrityRatio = unit.stats.num/unit.stats.origNum;
+    var integrity =
+        integrityRatio > 0.9 ? 'Fresh' :
+        integrityRatio > 0.7 ? 'Taken Losses' :
+        integrityRatio > 0.5 ? 'Heavy Losses' :
+        integrityRatio > 0.3 ? 'Critical Losses' :
+        'Decimated';
+    //if(integrityRatio == 0) {
+    //    canvas.remove(unit);
+    //    units[unit.id] = null;
+    //}
+    unit.stats.integrity = integrity;
+    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
+    unit.item(1).set('opacity', (1-percentDamage));
+    unit.item(0).set('opacity', (integrityRatio)/2);
 }
