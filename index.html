@@ -29,6 +29,10 @@
             </p>
             <p>
                 <div id="perUnit" style="visibility: hidden;">
+                    Adv: <input type="checkbox" id="adv" onclick="setAdv()"> |
+                    Vulnerable: <input type="checkbox" id="vuln" onclick="setAdv()"> |
+                    <button type="button" id="eng" onclick="setEngaged()">Engaged:</button>
+                    <input type="number" id="engNum"> |
                     <button type="button" id="directDamage" onclick="applyDirectDamage()">Apply</button>
                     <input type="number" id="directDamageAmt"> damage to 
                     <input type="number" id="directDamageNum"> members of unit.

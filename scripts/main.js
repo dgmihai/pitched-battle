@@ -92,6 +92,13 @@ class Unit {
         this.width = width;
         this.fitness = "Fit";
         this.integrity = "Fresh";
+        this.adv = false;
+        this.vuln = false;
+    }
+
+    setAdv(adv, vuln) {
+        this.adv = adv;
+        this.vuln = vuln;
     }
 
     addTempDamage(damage) {
@@ -110,7 +117,7 @@ class Unit {
         this.hpDmg = this.hpDmg + this.tempHpDmg + this.tempHpApldDmg;
         this.tempHpDmg = 0;
         this.tempHpApldDmg = 0;
-        console.log("Casualties: " + this.num + ", " + this.losses);
+        console.debug("Casualties: " + this.num + ", " + this.losses);
         this.num = this.num - this.losses; // Handle through MATH
         this.losses = 0;
     }
@@ -314,7 +321,10 @@ function onOver(o) {
         o.target.setCoords();
         var pointer = canvas.getPointer(o.e);
         if ((hoverText == null || hoverText == undefined) && o.target.stats != undefined) {
-            var textInfo =
+            var textInfo = "";
+            if(o.target.stats.adv) textInfo = "ADVANTAGE\n";
+            if(o.target.stats.vuln) textInfo = textInfo + "VULNERABLE\n";
+            textInfo = textInfo +
                 o.target.stats.num + "/" + o.target.stats.origNum + " Troops\n " +
                 Math.min(o.target.stats.num, o.target.stats.width) + " Engaged\n" + 
                 o.target.stats.hpDmg + " Damage\n" +
@@ -346,8 +356,12 @@ function onOut(o) {
 function onSelection(o) {
     o.target.bringToFront();
     document.getElementById('perUnit').style.visibility="visible";
+    document.getElementById('adv').checked = o.target.stats.adv;
+    document.getElementById('vuln').checked = o.target.stats.vuln;
     if (hoverText != null && hoverText != undefined)
         hoverText.bringToFront();
+    if (o.target.lossText != null && o.target.lossText != undefined)   
+        o.target.lossText.bringToFront();
 }
 
 function onDeselect(o) {
@@ -365,6 +379,28 @@ function onObjScale(o) {
     */
     o.target.setCoords();
     //rollCombat();
+}
+
+//=====================================================================
+// FORM
+//=====================================================================
+
+function setEngaged() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    selected.stats.setWidth(parseInt(document.getElementById('engNum').value, 10));
+    rollCombat();
+}
+
+function setAdv() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    selected.stats.setAdv(document.getElementById('adv').checked,
+                    document.getElementById('vuln').checked);
 }
 
 //=====================================================================
@@ -412,6 +448,9 @@ function addUnit(faction) {
             originY: "center",
         });
         var unit = new fabric.Group([rect, img]);
+        unit.set({
+            top: 100, left: 100,
+        });
         canvas.add(unit);
         units.splice(unitCount, 0, unit);
         unit.set({
@@ -460,6 +499,8 @@ function displayLossText(unit) {
     canvas.add(unit.lossText);
 }
 
+
+
 //=====================================================================
 // COMBAT
 //=====================================================================
@@ -497,9 +538,10 @@ function rollCombat() {
             if (combats.length > 0) {
                 for (let combat of combats) {
                     var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
-                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length);
+                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, unit.stats.adv);
                 }
-                tallyLosses(unit);
+                if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0)
+                    tallyLosses(unit);
                 console.debug(unit.stats.losses);
                 displayLossText(unit);
 
@@ -516,7 +558,7 @@ function applyDirectDamage() {
     var amount = parseInt(document.getElementById('directDamageAmt').value, 10);
     var num = parseInt(document.getElementById('directDamageNum').value, 10);
     selected.stats.addTempDirectDamage(amount);
-    console.log(selected.stats.tempHpApldDmg);
+    console.debug("Applied damage: " + selected.stats.tempHpApldDmg);
     tallyLosses(selected, true, num);
     displayLossText(selected);
 }
@@ -526,6 +568,7 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
         var bonus = attacker.stats.getMainAttBonus();
         roll = Math.floor(Math.random() * 19) + 1 + bonus;
         if (advantage) {
+            console.debug("Rolling with advantage: " + roll);
             roll = Math.max(roll, Math.floor(Math.random() * 19) + 1 + bonus);
         }
     }
@@ -541,6 +584,9 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
 function tallyLosses(unit, direct=false, num=Infinity) {
     // Calculate losses
     var losses = Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num);
+    if(unit.stats.vuln)
+        console.debug("Vulnerable!")
+        losses = Math.max(Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num));
     var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
     unit.stats.fitness = "Fit";
     if (percentDamage > 0.1) {
