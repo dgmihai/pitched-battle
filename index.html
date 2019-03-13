@@ -12,14 +12,17 @@
 <div class="container">
     <form>
         <fieldset>
-            <legend>Alright, chaps! 0.0.4</legend>
+            <legend>Alright, chaps! 0.0.5</legend>
+            <input type="file" name="file" id="file">
             <p>
                 <input type="checkbox" id="roll" onclick="rollCombat()">Auto-Roll Combat
                 <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
             </p>
             <p>
                 <div id="addUnit">
-                    <select id = "unitType">
+                    <input type="number" id="unitSize" placeholder="Size" min="5" onkeyup="fillWidth()">
+                    <input type="number" id="unitWidth" placeholder="Width" min="1">
+                    <select id = "types">
                         <option disabled selected value>Unit Type</option>
                     </select>
                     <button type="button" id="addRedUnit" onclick="addUnit('red')">Add Faction One Unit</button>

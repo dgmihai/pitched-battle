@@ -14,6 +14,8 @@ var round = 0;
 var from;
 var to;
 
+var scale = 10; // Pixel edge per soldier
+
 // Each unit is a group
 // [rect, image]
 var units = new Array();
@@ -21,6 +23,8 @@ var units = new Array();
 var collisions = new Array();
 // {origin, target}
 var connections = new Array();
+// Unit types
+var unitTypes = {};
 
 fabric.Object.prototype.toObject = (function (toObject) {
     return function (properties) {
@@ -59,7 +63,7 @@ var Stat = {
 }
 
 class UnitType {
-    constructor(cr, hp, ac, attks, dmg, main, str, dex, con, wis, itl, cha, prf) {
+    constructor(name, cr, ac, hp, dmg, attks, str, dex, con, wis, itl, cha, prf, main) {
         this.name = name;
         this.cr = cr;
         this.hp = hp;
@@ -75,6 +79,10 @@ class UnitType {
         this.cha = cha;
         this.prf = prf; //Proficiency
         this.morale = wis+2;
+    }
+
+    getName() {
+        return this.name;
     }
 }
 
@@ -159,11 +167,6 @@ class Unit {
         return mod;
     }
 }
-
-//TEMP
-var swordz = new UnitType(2, 40, 17, 2, 15, Stat.STR,
-                          3, 2, 2, 1, 2, 0,
-                          2);
 
 //=====================================================================
 // QUERIES
@@ -321,7 +324,7 @@ function onOver(o) {
         o.target.setCoords();
         var pointer = canvas.getPointer(o.e);
         if ((hoverText == null || hoverText == undefined) && o.target.stats != undefined) {
-            var textInfo = "";
+            var textInfo = o.target.stats.type.name + "\n";
             if(o.target.stats.adv) textInfo = "ADVANTAGE\n";
             if(o.target.stats.vuln) textInfo = textInfo + "VULNERABLE\n";
             textInfo = textInfo +
@@ -403,6 +406,60 @@ function setAdv() {
                     document.getElementById('vuln').checked);
 }
 
+document.getElementById('file').onchange = function() {
+    var file = this.files[0];
+
+    var reader = new FileReader();
+    reader.onload = function(progressEvent) {
+        var select = document.getElementById("types");
+        select.options.length = 0;
+        // By lines
+        var lines = this.result.split('\n');
+        var count = 0;
+        for(var line = 0; line < lines.length; line++) {
+            console.debug("Line: " + lines[line]);
+            var cols = lines[line].split(',');
+            if (cols[1] == "X") {
+                // New class of unit
+            } else {
+                var newType = new UnitType( 
+                    cols[0], // Name
+                    parseInt(cols[1], 10), // Challenge Rating
+                    // 2 - Tier
+                    // 3 - Num
+                    parseInt(cols[4], 10), // Armor Class
+                    parseInt(cols[5], 10), // Health of Individual Number
+                    parseInt(cols[6], 10), // Primary Attack Average Damage
+                    // 7 - To Hit
+                    // 8 - Number of Dice
+                    // 9 - Modifier 
+                    parseInt(cols[10], 10), // Primary Attack Count
+                    // 11 - Roll
+                    // 12 - Secondary Attack Damage
+                    parseInt(cols[13], 10), // Str
+                    parseInt(cols[14], 10), // Dex
+                    parseInt(cols[15], 10), // Con
+                    parseInt(cols[16], 10), // Wis
+                    10, // Int
+                    10, // Cha
+                    parseInt(cols[15], 10), // Proficiency Bonus
+                    parseInt(cols[16], 10) // Main Attack State
+                );
+                unitTypes[cols[0]] = newType;
+                select.options[select.options.length] = new Option(newType.name, newType.name);
+                console.log(newType.name);
+                count++;
+            }
+        }
+    };
+    reader.readAsText(file);
+};
+
+function fillWidth() {
+    var size = parseInt(document.getElementById('unitSize').value, 10);
+    document.getElementById('unitWidth').value = Math.floor(Math.sqrt(size*2));
+}
+
 //=====================================================================
 // DRAWING
 //=====================================================================
@@ -423,8 +480,11 @@ function makeLine(coords, origin) {
 }
 
 function addUnit(faction) {
+    var unitSize = parseInt(document.getElementById('unitSize').value, 10);
+    var unitWidth = parseInt(document.getElementById('unitWidth').value, 10);
+
     var rect = new fabric.Rect({
-        width: 100, height: 50,
+        width: unitWidth*scale, height: unitSize/unitWidth*scale,
         strokeWidth: 2,
         stroke: 'black',
         fill: faction,
@@ -438,12 +498,14 @@ function addUnit(faction) {
         shadow: 'rgba(0,0,0,1) 0px 0px 20px'
     });
 
-    var stats = new Unit(unitCount + " Infantry", swordz, Math.floor((rect.width*rect.height)/100), 0);
-    stats.setWidth(Math.ceil(rect.width/10));
+    var typeList = document.getElementById('types');
+    var type = unitTypes[typeList.options[typeList.selectedIndex].value];
+    var stats = new Unit(unitCount + " Unit", type, unitSize, unitWidth);
 
     fabric.Image.fromURL('./img/heavyinf.png', function(img) {
-        img.scaleToWidth(rect.width);
         img.set({
+            scaleX: (unitWidth*scale)/img.width,
+            scaleY: (unitSize/unitWidth*scale)/img.height,
             originX: "center",
             originY: "center",
         });
@@ -498,8 +560,6 @@ function displayLossText(unit) {
     });
     canvas.add(unit.lossText);
 }
-
-
 
 //=====================================================================
 // COMBAT
