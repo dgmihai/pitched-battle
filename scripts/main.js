@@ -100,7 +100,7 @@ class Unit {
         this.width = width;
         this.fitness = "Fit";
         this.integrity = "Fresh";
-        this.adv = false;
+        this.adv = "Normal";
         this.vuln = false;
     }
 
@@ -325,8 +325,8 @@ function onOver(o) {
         var pointer = canvas.getPointer(o.e);
         if ((hoverText == null || hoverText == undefined) && o.target.stats != undefined) {
             var textInfo = o.target.stats.type.name + "\n";
-            if(o.target.stats.adv) textInfo = "ADVANTAGE\n";
-            if(o.target.stats.vuln) textInfo = textInfo + "VULNERABLE\n";
+            if(o.target.stats.adv != "Normal") textInfo = o.target.stats.adv + "\n";
+            if(o.target.stats.vuln) textInfo = textInfo + "Vulnerable\n";
             textInfo = textInfo +
                 o.target.stats.num + "/" + o.target.stats.origNum + " Troops\n " +
                 Math.min(o.target.stats.num, o.target.stats.width) + " Engaged\n" + 
@@ -359,8 +359,9 @@ function onOut(o) {
 function onSelection(o) {
     o.target.bringToFront();
     document.getElementById('perUnit').style.visibility="visible";
-    document.getElementById('adv').checked = o.target.stats.adv;
+    document.getElementById('adv').value = o.target.stats.adv;
     document.getElementById('vuln').checked = o.target.stats.vuln;
+    document.getElementById('directDamageNum').value = o.target.stats.num;
     if (hoverText != null && hoverText != undefined)
         hoverText.bringToFront();
     if (o.target.lossText != null && o.target.lossText != undefined)   
@@ -394,6 +395,16 @@ function setEngaged() {
     }
     var selected = canvas.getActiveObject();
     selected.stats.setWidth(parseInt(document.getElementById('engNum').value, 10));
+    selected.item(0).set({
+        scaleX: (selected.stats.width*scale)/selected.width,
+        scaleY: ((selected.stats.num/selected.stats.width)*scale)/selected.height,
+    });
+    selected.item(1).set({
+        scaleX: (selected.stats.width*scale)/selected.item(1).width,
+        scaleY: ((selected.stats.num/selected.stats.width)*scale)/selected.item(1).height,
+    });
+    selected.setCoords();
+    canvas.renderAll();
     rollCombat();
 }
 
@@ -402,8 +413,9 @@ function setAdv() {
         return;
     }
     var selected = canvas.getActiveObject();
-    selected.stats.setAdv(document.getElementById('adv').checked,
-                    document.getElementById('vuln').checked);
+    console.log(document.getElementById('adv').value);
+    selected.stats.setAdv(document.getElementById('adv').value,
+                          document.getElementById('vuln').checked);
 }
 
 document.getElementById('file').onchange = function() {
@@ -458,6 +470,14 @@ document.getElementById('file').onchange = function() {
 function fillWidth() {
     var size = parseInt(document.getElementById('unitSize').value, 10);
     document.getElementById('unitWidth').value = Math.floor(Math.sqrt(size*2));
+}
+
+function deleteUnit() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    canvas.remove(selected);
 }
 
 //=====================================================================
@@ -598,7 +618,7 @@ function rollCombat() {
             if (combats.length > 0) {
                 for (let combat of combats) {
                     var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
-                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, unit.stats.adv);
+                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, attacker.stats.adv);
                 }
                 if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0)
                     tallyLosses(unit);
@@ -627,12 +647,21 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
     if(roll == undefined) {
         var bonus = attacker.stats.getMainAttBonus();
         roll = Math.floor(Math.random() * 19) + 1 + bonus;
-        if (advantage) {
-            console.debug("Rolling with advantage: " + roll);
-            roll = Math.max(roll, Math.floor(Math.random() * 19) + 1 + bonus);
+        console.debug("Roll: " + roll);
+        console.debug(advantage);
+        if (advantage != "Normal") {
+            //console.debug("Rolling with dis/advantage");
+            secondRoll = Math.floor(Math.random() * 19) + 1 + bonus;
+            console.debug("Second Roll: " + secondRoll);
+            switch (advantage) {
+                case "Advantage":
+                    roll = Math.max(roll, secondRoll);
+                case "Disadvantage":
+                    roll = Math.min(roll, secondRoll);
+            }
         }
+        console.debug("Final Roll: " + roll);
     }
-    console.debug("Roll: " + roll);
     console.debug("AC: " + defender.stats.type.ac);
     var factor = Math.floor((roll - defender.stats.type.ac) / 5);
     var dmg = (attacker.stats.type.dmg * Math.min(attacker.stats.num, attacker.stats.width))/split;
@@ -715,6 +744,18 @@ function applyUnitCombat(unit) {
     //}
     unit.stats.integrity = integrity;
     var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
-    unit.item(1).set('opacity', (1-percentDamage));
-    unit.item(0).set('opacity', (integrityRatio)/2);
+    console.log((unit.stats.num/unit.stats.width)*scale);
+    unit.item(0).set({
+        //opacity: (integrityRatio)/2,
+        scaleX: (unit.stats.width*scale)/unit.width,
+        scaleY: ((unit.stats.num/unit.stats.width)*scale)/unit.height,
+    });
+    unit.item(1).set({
+        opacity: (1-percentDamage),
+        scaleX: (unit.stats.width*scale)/unit.item(1).width,
+        scaleY: ((unit.stats.num/unit.stats.width)*scale)/unit.item(1).height,
+    });
+    // BOUNDING BOX DOESN'T FIT PROPERLY!
+    unit.setCoords();
+    if (unit.stats.num == 0) canvas.remove(unit); // DOESN"T DELETE UNIT FROM ARRAY, fucking sue me
 }

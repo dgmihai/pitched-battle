@@ -12,16 +12,16 @@
 <div class="container">
     <form>
         <fieldset>
-            <legend>Alright, chaps! 0.0.5</legend>
+            <legend>Alright, chaps! 0.0.6</legend>
             <input type="file" name="file" id="file">
             <p>
-                <input type="checkbox" id="roll" onclick="rollCombat()">Auto-Roll Combat
+                <input type="checkbox" id="roll" onclick="rollCombat()">Roll Combat
                 <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
             </p>
             <p>
                 <div id="addUnit">
-                    <input type="number" id="unitSize" placeholder="Size" min="5" onkeyup="fillWidth()">
-                    <input type="number" id="unitWidth" placeholder="Width" min="1">
+                    <input type="number" id="unitSize" placeholder="Size" value="40" min="5" onkeyup="fillWidth()">
+                    <input type="number" id="unitWidth" placeholder="Width" value="8" min="1">
                     <select id = "types">
                         <option disabled selected value>Unit Type</option>
                     </select>
@@ -32,13 +32,18 @@
             </p>
             <p>
                 <div id="perUnit" style="visibility: hidden;">
-                    Adv: <input type="checkbox" id="adv" onclick="setAdv()"> |
+                    <select id="adv" onchange="setAdv()">
+                        <option value="Advantage">Advantage</option>
+                        <option selected value="Normal">Normal</option>
+                        <option value="Disadvantage">Disadvantage</option>
+                    </select> |
                     Vulnerable: <input type="checkbox" id="vuln" onclick="setAdv()"> |
                     <button type="button" id="eng" onclick="setEngaged()">Engaged:</button>
-                    <input type="number" id="engNum"> |
+                    <input type="number" id="engNum"><br>
                     <button type="button" id="directDamage" onclick="applyDirectDamage()">Apply</button>
                     <input type="number" id="directDamageAmt"> damage to 
-                    <input type="number" id="directDamageNum"> members of unit.
+                    <input type="number" id="directDamageNum" value="40"> members of unit.
+                    <button type="button" id="removeUnit" onclick="deleteUnit()">Remove Unit</button>
                 </div>
             </p>
         </fieldset>
