@@ -243,21 +243,23 @@ function onObjMove(o) {
     }
     // Detect Collisions
     for (let obj of units) {
-        var collision = getCollisions(obj.id, o.target.id);
-        if (o.target.intersectsWithObject(obj) && o.target.faction != obj.faction) {
-            if (collision == -1) {
-                collisions.push([obj.id, o.target.id]);
-                o.target.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
-                obj.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
-                rollCombat();
-            }
-        } else {
-            if (collision != -1) {
-                collisions.splice(collision, 1);
-                rollCombat();
-            }
-            if (getCollisions(obj.id).length == 0 && getConnections(null, obj.id).length == 0) {
-                obj.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+        if (obj != null) {
+            var collision = getCollisions(obj.id, o.target.id);
+            if (o.target.intersectsWithObject(obj) && o.target.faction != obj.faction) {
+                if (collision == -1) {
+                    collisions.push([obj.id, o.target.id]);
+                    o.target.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
+                    obj.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
+                    rollCombat();
+                }
+            } else {
+                if (collision != -1) {
+                    collisions.splice(collision, 1);
+                    rollCombat();
+                }
+                if (getCollisions(obj.id).length == 0 && getConnections(null, obj.id).length == 0) {
+                    obj.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+                }
             }
         }
     }
@@ -610,21 +612,22 @@ function getDefendingEngagements(unit) {
 
 function rollCombat() {
     for (let unit of units) {
-        unit.stats.resetStagedResults();
-        canvas.remove(unit.lossText);
-        unit.lossText = null;
-        if(document.getElementById('roll').checked == true) {
-            var combats = getDefendingEngagements(unit);
-            if (combats.length > 0) {
-                for (let combat of combats) {
-                    var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
-                    stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, attacker.stats.adv);
+        if (unit != null) {
+            unit.stats.resetStagedResults();
+            canvas.remove(unit.lossText);
+            unit.lossText = null;
+            if(document.getElementById('roll').checked == true) {
+                var combats = getDefendingEngagements(unit);
+                if (combats.length > 0) {
+                    for (let combat of combats) {
+                        var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
+                        stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, attacker.stats.adv);
+                    }
+                    if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0)
+                        tallyLosses(unit);
+                    console.debug(unit.stats.losses);
+                    displayLossText(unit);
                 }
-                if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0)
-                    tallyLosses(unit);
-                console.debug(unit.stats.losses);
-                displayLossText(unit);
-
             }
         }
     }
@@ -710,7 +713,7 @@ function tallyLosses(unit, direct=false, num=Infinity) {
 
 function applyCombat() {
     for (let unit of units) {
-        applyUnitCombat(unit);
+        if (unit != null) applyUnitCombat(unit);
     }
     rollCombat();
     canvas.renderAll();
@@ -738,24 +741,32 @@ function applyUnitCombat(unit) {
         integrityRatio > 0.5 ? 'Heavy Losses' :
         integrityRatio > 0.3 ? 'Critical Losses' :
         'Decimated';
-    //if(integrityRatio == 0) {
-    //    canvas.remove(unit);
-    //    units[unit.id] = null;
-    //}
     unit.stats.integrity = integrity;
     var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
-    console.log((unit.stats.num/unit.stats.width)*scale);
+    // SCALING
+    if (unit.stats.num < unit.stats.width) unit.stats.setWidth(unit.stats.num);
+    var newX = unit.stats.width*scale;
+    var newY = (unit.stats.num/unit.stats.width)*scale;
     unit.item(0).set({
         //opacity: (integrityRatio)/2,
-        scaleX: (unit.stats.width*scale)/unit.width,
-        scaleY: ((unit.stats.num/unit.stats.width)*scale)/unit.height,
+        scaleX: newX/unit.width,
+        scaleY: newY/unit.height,
     });
     unit.item(1).set({
         opacity: (1-percentDamage),
-        scaleX: (unit.stats.width*scale)/unit.item(1).width,
-        scaleY: ((unit.stats.num/unit.stats.width)*scale)/unit.item(1).height,
+        scaleX: newX/unit.item(1).width,
+        scaleY: newY/unit.item(1).height,
     });
     // BOUNDING BOX DOESN'T FIT PROPERLY!
     unit.setCoords();
-    if (unit.stats.num == 0) canvas.remove(unit); // DOESN"T DELETE UNIT FROM ARRAY, fucking sue me
+    if (unit.stats.num == 0) {
+        canvas.remove(unit.lossText);
+        unit.lossText = null;
+        unit.set({
+            left: "0px",
+            top: "0px"
+        }); // Yeah, shortcut, fuck you
+        canvas.remove(unit);
+        units[unit.stats.id] = null; // DOESN"T DELETE UNIT FROM ARRAY, fucking sue me
+    }
 }
