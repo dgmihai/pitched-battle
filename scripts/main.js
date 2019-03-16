@@ -14,7 +14,7 @@ var round = 0;
 var from;
 var to;
 
-var scale = 10; // Pixel edge per soldier
+var scale = 5; // Pixel edge per soldier
 
 // Each unit is a group
 // [rect, image]
@@ -79,36 +79,41 @@ class UnitType {
         this.cha = cha;
         this.prf = prf; //Proficiency
         this.morale = wis+2;
-    }
-
-    getName() {
-        return this.name;
+        this.custRoll = 0;
     }
 }
 
 class Unit {
-    constructor(name, type, num, width, morale) {
+    constructor(name, type, num, engaged, morale) {
         this.name = name;
         this.type = type;
         this.hpDmg = 0;
         this.tempHpDmg = 0;
         this.tempHpApldDmg = 0;
+        this.tempApldDmgNum = 0;
         this.num = num;
         this.origNum = num;
-        this.losses = 0;
+        this.combatLosses = 0;
+        this.directLosses = 0;
         this.morale = morale;
-        this.width = width;
+        this.engaged = engaged;
         this.fitness = "Fit";
         this.integrity = "Fresh";
         this.adv = "Normal";
         this.vuln = false;
     }
 
+    setCustRoll(roll) {
+        this.custRoll = roll ? roll : 0;
+    }
+
+    // Advantage
     setAdv(adv, vuln) {
         this.adv = adv;
         this.vuln = vuln;
     }
 
+    // Staged Damage
     addTempDamage(damage) {
         this.tempHpDmg = this.tempHpDmg + damage;
     }
@@ -117,17 +122,39 @@ class Unit {
         this.tempHpApldDmg = this.tempHpApldDmg + damage;
     }
 
-    addLosses(losses) {
-        this.losses = Math.min(losses, this.num);
+    // Staged Losses
+    addCombatLosses(losses) {
+        this.combatLosses = Math.min(losses, this.num - this.getStagedLosses());
     }
 
+    addDirectLosses(losses) {
+        this.directLosses = Math.min(losses, this.num - this.getStagedLosses());
+    }
+
+    getStagedLosses() {
+        return this.combatLosses + this.directLosses;
+    }
+
+    setTempApldDmgNum(num) {
+        if (num > this.tempApldDmgNum) this.tempApldDmgNum = num;
+    }
+
+    // Apply staged losses/damage
     applyResults() {
+        // Adjust HP for losses
+        console.debug("Reduced Damage to Loss: " + (-1 * this.getStagedLosses() * this.type.hp));
+        this.addTempDirectDamage(-1 * this.directLosses * this.type.hp);
+        this.addTempDamage(-1 * this.combatLosses * this.type.hp);
+        // Apply damage to HP pool
         this.hpDmg = this.hpDmg + this.tempHpDmg + this.tempHpApldDmg;
+        // Reset staged damage
         this.tempHpDmg = 0;
         this.tempHpApldDmg = 0;
+        this.tempApldDmgNum = 0;
         console.debug("Casualties: " + this.num + ", " + this.losses);
-        this.num = this.num - this.losses; // Handle through MATH
-        this.losses = 0;
+        this.num = this.num - this.getStagedLosses();
+        this.combatLosses = 0;
+        this.directLosses = 0;
     }
 
     resetStagedResults() {
@@ -139,8 +166,12 @@ class Unit {
         this.num = num;
     }
 
-    setWidth(width) {
-        this.width = width;
+    addNum(num) {
+        this.num = this.num + num;
+    }
+
+    setEngaged(engaged) {
+        this.engaged = engaged;
     }
 
     getMainAttBonus() {
@@ -169,7 +200,7 @@ class Unit {
 }
 
 //=====================================================================
-// QUERIES
+// QUERIES/HELPERS
 //=====================================================================
 
 // If only one param, return all combats that unit is involved in
@@ -218,6 +249,65 @@ function getConnections(x, y) {
     return [];
 }
 
+function getAttackingEngagements(unit) {
+    var combats = [];
+    var melee = getCollisions(unit.id);
+    var ranged = getConnections(unit.id);
+    for (let x of melee)
+        combats.push(collisions[x]);
+    for (let y of ranged) {
+        combats.push(connections[y]);
+    }
+    return combats;
+}
+
+function getDefendingEngagements(unit) {
+    var combats = [];
+    var melee = getCollisions(unit.id);
+    var ranged = getConnections(null, unit.id);
+    for (let x of melee)
+        combats.push(collisions[x]);
+    for (let y of ranged)
+        combats.push(connections[y]);
+    return combats;
+}
+
+// This method is just fucking shortcuts but that's fine I guess
+function removeFromBoard(unit) {
+    canvas.remove(unit.lossText);
+    unit.lossText = null;
+    unit.set({
+        left: "0px",
+        top: "0px"
+    });
+    removeConnections(unit);
+    canvas.remove(unit);
+    units[unit.stats.id] = null;
+    canvas.renderAll();
+}
+
+function updateLines(unit) {
+    if (unit.line != null) {
+        var childLine = unit.line;
+        childLine.set({ x1: coord.x, y1: coord.y });
+    }
+    for (let incomingLine of unit.incomingLines) {
+        incomingLine.set({ x2: coord.x, y2: coord.y });
+    }
+}
+
+function removeConnections(unit) {
+    if (unit.line != null) {
+        canvas.remove(unit.line);
+        unit.line = null;
+    }
+    connections.splice(getConnections(unit.id));
+    for (let incomingLine of unit.incomingLines) {
+        connections.splice(getConnections(incomingLine.parent.id), 1);
+        canvas.remove(incomingLines);
+    }
+}
+
 //=====================================================================
 // EVENTS
 //=====================================================================
@@ -234,13 +324,7 @@ function onObjMove(o) {
         o.target.lossText.bringToFront();
     }
     // Update lines
-    if (o.target.line != null) {
-        var childLine = o.target.line;
-        childLine.set({ x1: coord.x, y1: coord.y });
-    }
-    for (let incomingLine of o.target.incomingLines) {
-        incomingLine.set({ x2: coord.x, y2: coord.y });
-    }
+    updateLines(o.target);
     // Detect Collisions
     for (let obj of units) {
         if (obj != null) {
@@ -278,7 +362,7 @@ function onDblClick(o) {
         if (o.target.get('line') != null) {
             oldTarget = o.target.get('line').get('target');
             if(oldTarget != null) {
-                connections.splice(getConnections(o.target.line.parent.id), 1);
+                connections.splice(getConnections(o.target.id), 1);
                 rollCombat();
                 if (getCollisions(oldTarget.id).length == 0 && getConnections(null, oldTarget.id).length == 0) {
                     oldTarget.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
@@ -330,9 +414,10 @@ function onOver(o) {
             if(o.target.stats.adv != "Normal") textInfo = o.target.stats.adv + "\n";
             if(o.target.stats.vuln) textInfo = textInfo + "Vulnerable\n";
             textInfo = textInfo +
-                o.target.stats.num + "/" + o.target.stats.origNum + " Troops\n " +
-                Math.min(o.target.stats.num, o.target.stats.width) + " Engaged\n" + 
-                o.target.stats.hpDmg + " Damage\n" +
+                o.target.stats.num + "/" + o.target.stats.origNum + " Troops\n" +
+                Math.min(o.target.stats.num, o.target.stats.engaged) + " Engaged\n" + 
+                o.target.stats.tempHpDmg + " Expected Dmg\n" +
+                o.target.stats.tempHpApldDmg + " Exp. Direct Dmg\n" +
                 o.target.stats.fitness + "\n" +
                 o.target.stats.integrity;
             hoverText = new fabric.Text(textInfo, {
@@ -359,11 +444,13 @@ function onOut(o) {
 }
 
 function onSelection(o) {
+    updateStatBlock(o.target);
+    fetchCustRoll(o.target);
     o.target.bringToFront();
     document.getElementById('perUnit').style.visibility="visible";
     document.getElementById('adv').value = o.target.stats.adv;
     document.getElementById('vuln').checked = o.target.stats.vuln;
-    document.getElementById('directDamageNum').value = o.target.stats.num;
+    document.getElementById('directDamageNum').value = 1;
     if (hoverText != null && hoverText != undefined)
         hoverText.bringToFront();
     if (o.target.lossText != null && o.target.lossText != undefined)   
@@ -372,41 +459,50 @@ function onSelection(o) {
 
 function onDeselect(o) {
     document.getElementById('perUnit').style.visibility="hidden";
+    document.getElementById('stat_block').innerHTML = "";
 }
 
 function onObjScale(o) {
-    /*
-    o.target.stats.setNum(Math.floor(o.target.getScaledWidth()*o.target.getScaledHeight()));
-    o.target.stats.setWidth(Math.ceil(o.target.getScaledWidth()));
-    if (hoverText != null && hoverText != undefined) {
-        var textInfo = o.target.stats.num + " Troops\n " + o.target.stats.width + " Combat Width";
-        hoverText.set('text', textInfo);
-    }
-    */
     o.target.setCoords();
-    //rollCombat();
 }
 
 //=====================================================================
 // FORM
 //=====================================================================
 
+function fetchCustRoll(unit) {
+    document.getElementById('custRoll').value = unit.stats.custRoll;
+}
+
+function setCustRoll() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    var custRoll = parseInt(document.getElementById('custRoll').value, 10);
+    selected.stats.setCustRoll(custRoll);
+    rollCombat();
+}
+
 function setEngaged() {
     if(!canvas.getActiveObject()) {
         return;
     }
     var selected = canvas.getActiveObject();
-    selected.stats.setWidth(parseInt(document.getElementById('engNum').value, 10));
-    selected.item(0).set({
-        scaleX: (selected.stats.width*scale)/selected.width,
-        scaleY: ((selected.stats.num/selected.stats.width)*scale)/selected.height,
-    });
-    selected.item(1).set({
-        scaleX: (selected.stats.width*scale)/selected.item(1).width,
-        scaleY: ((selected.stats.num/selected.stats.width)*scale)/selected.item(1).height,
-    });
+    selected.stats.setEngaged(parseInt(document.getElementById('engNum').value, 10));
+    scaleUnit(selected);
     selected.setCoords();
     canvas.renderAll();
+    rollCombat();
+}
+
+function addNum() {
+    if(!canvas.getActiveObject()) {
+        return;
+    }
+    var selected = canvas.getActiveObject();
+    selected.stats.setNum(parseInt(selected.stats.num, 10) + parseInt(document.getElementById('numDelta').value), 10);
+    scaleUnit(selected);
     rollCombat();
 }
 
@@ -415,9 +511,97 @@ function setAdv() {
         return;
     }
     var selected = canvas.getActiveObject();
-    console.log(document.getElementById('adv').value);
     selected.stats.setAdv(document.getElementById('adv').value,
                           document.getElementById('vuln').checked);
+    /*
+    if (selected.stats.vuln) {
+        selected.item(0).set('opacity', 0.25);
+    } else {
+        selected.item(0).set('opacity', 0.5);
+    }
+    switch (selected.stats.adv) {
+        case "Advantage":
+            selected.item(1).set('opacity', 1);
+        case "Normal":
+            selected.item(1).set('opacity', 0.75);
+        case "Disadvantage":
+            selected.item(1).set('opacity', 0);
+        default:
+            break;
+    }
+    */
+    rollCombat();
+}
+
+{
+    var remoteUnitTypes = '';
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function(){
+      if(xmlhttp.status == 200 && xmlhttp.readyState == 4){
+        remoteUnitTypes = xmlhttp.responseText;
+      }
+    };
+    //xmlhttp.open("GET", "https://dgmihai.github.io/pitched-battle/resources/units.csv", true);
+    xmlhttp.open("GET", "https://raw.githubusercontent.com/dgmihai/pitched-battle/master/resources/units.csv", true);
+    xmlhttp.send();
+
+    console.log("Heh?" + remoteUnitTypes);
+
+    if(!remoteUnitTypes) {
+        var localUnitTypes = localStorage.getItem('unitTypes');
+        if(localUnitTypes != "null") {
+            console.log("Found saved unit types!");
+            populateUnitTypes(localUnitTypes);
+        }
+    }
+}
+
+function populateUnitTypes(input) {
+    var select = document.getElementById("types");
+    select.options.length = 0;
+    // By lines
+    var lines = input.split('\r');
+    var count = 0;
+    var group = null;
+    for(var line = 0; line < lines.length; line++) {
+        console.debug("Line: " + lines[line]);
+        var cols = lines[line].split(',');
+        console.debug(cols);
+        if (cols[1] == "X") {
+            // New class of unit
+            if (group != null) select.appendChild(group);
+            group = document.createElement('optgroup');
+            group.setAttribute("label", cols[0]);
+            console.log("Group: " + group + " , " + cols[0]);
+            console.log("Creating group");
+        } else {
+            var newType = new UnitType( 
+                cols[0], // Name
+                parseInt(cols[1], 10), // Challenge Rating
+                // 2 - Tier
+                // 3 - Num
+                parseInt(cols[4], 10), // Armor Class
+                parseInt(cols[5], 10), // Health of Individual Number
+                parseInt(cols[6], 10), // Primary Attack Average Damage
+                // 7 - To Hit
+                // 8 - Number of Dice
+                // 9 - Damage Mod
+                parseInt(cols[10], 10), // Primary Attack Count or Mod (???)
+                // 11 - Roll Modifier
+                parseInt(cols[12], 10), // Str
+                parseInt(cols[13], 10), // Dex
+                parseInt(cols[14], 10), // Con
+                parseInt(cols[15], 10), // Wis
+                0, // Int
+                0, // Cha
+                parseInt(cols[16], 10), // Proficiency Bonus
+                toStat(cols[17]) // Main Attack Stat
+            );
+            unitTypes[cols[0]] = newType;
+            group.appendChild(new Option(newType.name));
+            count++;
+        }
+    }
 }
 
 document.getElementById('file').onchange = function() {
@@ -425,53 +609,32 @@ document.getElementById('file').onchange = function() {
 
     var reader = new FileReader();
     reader.onload = function(progressEvent) {
-        var select = document.getElementById("types");
-        select.options.length = 0;
-        // By lines
-        var lines = this.result.split('\n');
-        var count = 0;
-        for(var line = 0; line < lines.length; line++) {
-            console.debug("Line: " + lines[line]);
-            var cols = lines[line].split(',');
-            if (cols[1] == "X") {
-                // New class of unit
-            } else {
-                var newType = new UnitType( 
-                    cols[0], // Name
-                    parseInt(cols[1], 10), // Challenge Rating
-                    // 2 - Tier
-                    // 3 - Num
-                    parseInt(cols[4], 10), // Armor Class
-                    parseInt(cols[5], 10), // Health of Individual Number
-                    parseInt(cols[6], 10), // Primary Attack Average Damage
-                    // 7 - To Hit
-                    // 8 - Number of Dice
-                    // 9 - Modifier 
-                    parseInt(cols[10], 10), // Primary Attack Count
-                    // 11 - Roll
-                    // 12 - Secondary Attack Damage
-                    parseInt(cols[13], 10), // Str
-                    parseInt(cols[14], 10), // Dex
-                    parseInt(cols[15], 10), // Con
-                    parseInt(cols[16], 10), // Wis
-                    10, // Int
-                    10, // Cha
-                    parseInt(cols[15], 10), // Proficiency Bonus
-                    parseInt(cols[16], 10) // Main Attack State
-                );
-                unitTypes[cols[0]] = newType;
-                select.options[select.options.length] = new Option(newType.name, newType.name);
-                console.log(newType.name);
-                count++;
-            }
-        }
+        localStorage.setItem('unitTypes', this.result);
+        populateUnitTypes(this.result);
     };
     reader.readAsText(file);
 };
 
-function fillWidth() {
-    var size = parseInt(document.getElementById('unitSize').value, 10);
-    document.getElementById('unitWidth').value = Math.floor(Math.sqrt(size*2));
+function toStat(stat) {
+    switch (stat) {
+        case "STR":
+            return Stat.STR;
+        case "DEX":
+            return Stat.DEX;
+        case "CON":
+            return Stat.CON;
+        case "WIS":
+            return Stat.WIS;
+        case "INT":
+            return Stat.ITL;
+        case "CHA":
+            return Stat.CHA;
+    }
+}
+
+function fillEngaged() {
+    //var size = parseInt(document.getElementById('unitSize').value, 10);
+    //document.getElementById('unitEngaged').value = Math.floor(Math.sqrt(size*2));
 }
 
 function deleteUnit() {
@@ -479,12 +642,31 @@ function deleteUnit() {
         return;
     }
     var selected = canvas.getActiveObject();
-    canvas.remove(selected);
+    removeFromBoard(selected);
 }
 
 //=====================================================================
-// DRAWING
+// DRAWING & UNIT CREATION
 //=====================================================================
+
+// Define the URL where your background image is located
+var imageUrl = "./img/Map.jpg";
+
+fabric.Image.fromURL('img/Map.jpg', function(img){
+    img.scaleToWidth(canvas.width);
+    img.set('opacity', 0.9);
+    canvas.setBackgroundImage(img);
+    canvas.requestRenderAll();
+});
+
+function scaleUnit(unit) {
+    var newX = unit.stats.engaged*scale;
+    var newY = (unit.stats.num/unit.stats.engaged)*scale;
+    unit.set({
+        scaleX: newX/unit.width,
+        scaleY: newY/unit.height,
+    });
+}
 
 // function for drawing a line
 function makeLine(coords, origin) {
@@ -503,10 +685,10 @@ function makeLine(coords, origin) {
 
 function addUnit(faction) {
     var unitSize = parseInt(document.getElementById('unitSize').value, 10);
-    var unitWidth = parseInt(document.getElementById('unitWidth').value, 10);
+    var unitEngaged = parseInt(document.getElementById('unitEngaged').value, 10);
 
     var rect = new fabric.Rect({
-        width: unitWidth*scale, height: unitSize/unitWidth*scale,
+        width: unitEngaged*scale, height: unitSize/unitEngaged*scale,
         strokeWidth: 2,
         stroke: 'black',
         fill: faction,
@@ -522,26 +704,24 @@ function addUnit(faction) {
 
     var typeList = document.getElementById('types');
     var type = unitTypes[typeList.options[typeList.selectedIndex].value];
-    var stats = new Unit(unitCount + " Unit", type, unitSize, unitWidth);
+    var stats = new Unit(unitCount + " Unit", type, unitSize, unitEngaged);
 
     fabric.Image.fromURL('./img/heavyinf.png', function(img) {
         img.set({
-            scaleX: (unitWidth*scale)/img.width,
-            scaleY: (unitSize/unitWidth*scale)/img.height,
+            scaleX: (unitEngaged*scale)/img.width,
+            scaleY: (unitSize/unitEngaged*scale)/img.height,
             originX: "center",
             originY: "center",
         });
         var unit = new fabric.Group([rect, img]);
-        unit.set({
-            top: 100, left: 100,
-        });
-        canvas.add(unit);
         units.splice(unitCount, 0, unit);
         unit.set({
             'id': unitCount,
             'incomingLines': [],
             'faction': unit.item(0).fill,
-            'stats': stats});
+            'stats': stats,
+            top: 100, left: 100});
+        canvas.add(unit);
         unit.on('mousemove', function(o) {
             if (hoverText != null || hoverText != undefined) {
                 var pointer = canvas.getPointer(o.e);
@@ -554,6 +734,7 @@ function addUnit(faction) {
             }
         });
         unitCount++;
+        scaleUnit(unit);
     });
 
     canvas.requestRenderAll();
@@ -566,7 +747,7 @@ function displayLossText(unit) {
     }
     unit.setCoords();
     var coord = unit.getCenterPoint();
-    var txt = unit.stats.num == unit.stats.losses ? "KO" : "-" + unit.stats.losses;
+    var txt = unit.stats.num == unit.stats.getStagedLosses() ? "KO" : "-" + unit.stats.getStagedLosses();
     unit.lossText = new fabric.Text(txt, {
         shadow: 'rgba(0,0,0,1) 0 0 40px',
         selectable: false,
@@ -584,31 +765,32 @@ function displayLossText(unit) {
 }
 
 //=====================================================================
-// COMBAT
+// STAT BLOCK
 //=====================================================================
 
-function getAttackingEngagements(unit) {
-    var combats = [];
-    var melee = getCollisions(unit.id);
-    var ranged = getConnections(unit.id);
-    for (let x of melee)
-        combats.push(collisions[x]);
-    for (let y of ranged) {
-        combats.push(connections[y]);
-    }
-    return combats;
+// Unit stat block on the left
+function updateStatBlock(unit) {
+    var text =
+        "Name: " + unit.stats.type.name +
+        "<br>CR: " + unit.stats.type.cr +
+        "<br><br>AC: " + unit.stats.type.ac +
+        "<br>HP: " + unit.stats.type.hp +
+        "<br>To Hit: " + unit.stats.getMainAttBonus() +
+        "<br>Avg Dmg: " + unit.stats.type.dmg +
+        "<br><br>Sus. Dmg: " + unit.stats.hpDmg +
+        "<br>Number: " + unit.stats.num + "/" + unit.stats.origNum +
+        "<br><br>STR: " + unit.stats.type.str +
+        "<br>DEX: " + unit.stats.type.dex +
+        "<br>CON: " + unit.stats.type.con +
+        "<br>WIS: " + unit.stats.type.wis +
+        "<br>INT: " + unit.stats.type.itl +
+        "<br>CHA: " + unit.stats.type.cha;
+    document.getElementById('stat_block').innerHTML = text;
 }
 
-function getDefendingEngagements(unit) {
-    var combats = [];
-    var melee = getCollisions(unit.id);
-    var ranged = getConnections(null, unit.id);
-    for (let x of melee)
-        combats.push(collisions[x]);
-    for (let y of ranged)
-        combats.push(connections[y]);
-    return combats;
-}
+//=====================================================================
+// CALCULATE COMBAT
+//=====================================================================
 
 function rollCombat() {
     for (let unit of units) {
@@ -623,33 +805,35 @@ function rollCombat() {
                         var attacker = combat[0] != unit.id ? units[combat[0]] : units[combat[1]];
                         stageAttacks(attacker, unit, getAttackingEngagements(attacker).length, attacker.stats.adv);
                     }
-                    if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0)
-                        tallyLosses(unit);
-                    console.debug(unit.stats.losses);
-                    displayLossText(unit);
                 }
+            }
+            if(unit.stats.tempHpDmg > 0 || unit.stats.tempHpApldDmg > 0) {
+                stageLosses(unit);
+                console.debug(unit.stats.getStagedLosses());
             }
         }
     }
 }
 
-function applyDirectDamage() {
+function stageDirectDamage() {
     if(!canvas.getActiveObject()) {
         return;
     }
     var selected = canvas.getActiveObject();
-    var amount = parseInt(document.getElementById('directDamageAmt').value, 10);
-    var num = parseInt(document.getElementById('directDamageNum').value, 10);
+    var num = Math.max(parseInt(document.getElementById('directDamageNum').value, 10), selected.stats.tempApldDmgNum);
+    var amount = parseInt(document.getElementById('directDamageAmt').value, 10) * num;
+    selected.stats.setTempApldDmgNum(num);
     selected.stats.addTempDirectDamage(amount);
     console.debug("Applied damage: " + selected.stats.tempHpApldDmg);
-    tallyLosses(selected, true, num);
-    displayLossText(selected);
+    stageLosses(selected, true);
 }
 
-function stageAttacks(attacker, defender, split, advantage, roll) {
-    if(roll == undefined) {
+function stageAttacks(attacker, defender, split, advantage) {
+    var roll = attacker.stats.custRoll;
+    console.log("Existing roll: " + roll);
+    if(attacker.stats.custRoll == 0 || attacker.stats.custRoll == undefined) {
         var bonus = attacker.stats.getMainAttBonus();
-        roll = Math.floor(Math.random() * 19) + 1 + bonus;
+        var roll = Math.floor(Math.random() * 19) + 1 + bonus;
         console.debug("Roll: " + roll);
         console.debug(advantage);
         if (advantage != "Normal") {
@@ -663,17 +847,19 @@ function stageAttacks(attacker, defender, split, advantage, roll) {
                     roll = Math.min(roll, secondRoll);
             }
         }
-        console.debug("Final Roll: " + roll);
     }
+    console.debug("Final Roll: " + roll);
     console.debug("AC: " + defender.stats.type.ac);
     var factor = Math.floor((roll - defender.stats.type.ac) / 5);
-    var dmg = (attacker.stats.type.dmg * Math.min(attacker.stats.num, attacker.stats.width))/split;
+    var dmg = (attacker.stats.type.dmg * Math.min(attacker.stats.num, attacker.stats.engaged))/split;
     // Calculate potential damage
     console.debug("Pot Dmg: " + dmg);
     defender.stats.addTempDamage(factor >= 0 ? dmg : factor >= -1 ? dmg/2 : factor >= -2 ? dmg/4 : 0);
 }
 
-function tallyLosses(unit, direct=false, num=Infinity) {
+function stageLosses(unit, direct=false) {
+    var num = Infinity;
+    if(direct) num = unit.stats.tempApldDmgNum;
     // Calculate losses
     var losses = Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num);
     if(unit.stats.vuln)
@@ -701,22 +887,26 @@ function tallyLosses(unit, direct=false, num=Infinity) {
         }
     }
     console.debug("Losses: " + losses);
-    unit.stats.addLosses(losses);
-    // Adjust HP for losses
-    console.debug("Reduced Damage to Loss: " + (-1 * losses * unit.stats.type.hp));
-    if(direct) {
-        unit.stats.addTempDirectDamage(-1 * losses * unit.stats.type.hp);
+    if (direct) {
+        unit.stats.addDirectLosses(losses);
     } else {
-        unit.stats.addTempDamage(-1 * losses * unit.stats.type.hp);
+        unit.stats.addCombatLosses(losses);
     }
+    displayLossText(unit);
 }
+
+//=====================================================================
+// APPLY COMBAT
+//=====================================================================
 
 function applyCombat() {
     for (let unit of units) {
         if (unit != null) applyUnitCombat(unit);
     }
-    rollCombat();
+    if(canvas.getActiveObject())
+        updateStatBlock(canvas.getActiveObject());
     canvas.renderAll();
+    rollCombat();
     if(document.getElementById('roll').checked == true) {
         round++;
         var text = document.getElementById('apply').firstChild;
@@ -725,14 +915,6 @@ function applyCombat() {
 }
 
 function applyUnitCombat(unit) {
-    /*
-    rect = unit.item(0);
-    console.log("Area: " + rect.getScaledWidth()*unit.getScaledHeight());
-    console.log(unit.stats.num-unit.stats.losses);///(unit.stats.width));
-    console.log(Math.floor(rect.getScaledWidth()*rect.getScaledHeight()));
-    console.log("Num: " + unit.stats.num-unit.stats.losses);
-    unit.scaleToHeight((unit.stats.num-unit.stats.losses)/(unit.stats.width));
-    */
     unit.stats.applyResults();
     var integrityRatio = unit.stats.num/unit.stats.origNum;
     var integrity =
@@ -744,29 +926,12 @@ function applyUnitCombat(unit) {
     unit.stats.integrity = integrity;
     var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
     // SCALING
-    if (unit.stats.num < unit.stats.width) unit.stats.setWidth(unit.stats.num);
-    var newX = unit.stats.width*scale;
-    var newY = (unit.stats.num/unit.stats.width)*scale;
-    unit.item(0).set({
-        //opacity: (integrityRatio)/2,
-        scaleX: newX/unit.width,
-        scaleY: newY/unit.height,
-    });
-    unit.item(1).set({
-        opacity: (1-percentDamage),
-        scaleX: newX/unit.item(1).width,
-        scaleY: newY/unit.item(1).height,
-    });
-    // BOUNDING BOX DOESN'T FIT PROPERLY!
+    if (unit.stats.num < unit.stats.engaged) unit.stats.setEngaged(unit.stats.num);
+    scaleUnit(unit);
+    unit.stats.setCustRoll(0);
+    fetchCustRoll(unit);
     unit.setCoords();
     if (unit.stats.num == 0) {
-        canvas.remove(unit.lossText);
-        unit.lossText = null;
-        unit.set({
-            left: "0px",
-            top: "0px"
-        }); // Yeah, shortcut, fuck you
-        canvas.remove(unit);
-        units[unit.stats.id] = null; // DOESN"T DELETE UNIT FROM ARRAY, fucking sue me
+        removeFromBoard(unit);
     }
 }

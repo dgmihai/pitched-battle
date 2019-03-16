@@ -10,49 +10,64 @@
 
 <body>
 <div class="container">
-    <form>
-        <fieldset>
-            <legend>Alright, chaps! 0.0.6</legend>
-            <input type="file" name="file" id="file">
-            <p>
-                <input type="checkbox" id="roll" onclick="rollCombat()">Roll Combat
-                <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
-            </p>
-            <p>
-                <div id="addUnit">
-                    <input type="number" id="unitSize" placeholder="Size" value="40" min="5" onkeyup="fillWidth()">
-                    <input type="number" id="unitWidth" placeholder="Width" value="8" min="1">
-                    <select id = "types">
-                        <option disabled selected value>Unit Type</option>
-                    </select>
-                    <button type="button" id="addRedUnit" onclick="addUnit('red')">Add Faction One Unit</button>
-                    <button type="button" id="addBlueUnit" onclick="addUnit('blue')">Add Faction Two Unit</button>
-                </div>
+    <div class="container__buttons">
+        <form>
+            <fieldset>
+                <legend>Alright, chaps! 0.0.7</legend>
+                <input type="file" name="file" id="file">
+                <!--<input type="file" name="background" id="background">-->
+                <p>
+                    <input type="checkbox" id="roll" onclick="rollCombat()">Roll Combat
+                    <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
+                </p>
+                <p>
+                    <div id="addUnit">
+                        <input type="number" id="unitSize" placeholder="Size" value="30" min="5" onkeyup="fillEngaged()">
+                        <input type="number" id="unitEngaged" placeholder="Width" value="10" min="1">
+                        <select id = "types">
+                            <option disabled selected value>Unit Type</option>
+                        </select>
+                        <button type="button" id="addRedUnit" onclick="addUnit('green')">Add Faction One Unit</button>
+                        <button type="button" id="addBlueUnit" onclick="addUnit('yellow')">Add Faction Two Unit</button>
+                    </div>
 
-            </p>
-            <p>
-                <div id="perUnit" style="visibility: hidden;">
-                    <select id="adv" onchange="setAdv()">
-                        <option value="Advantage">Advantage</option>
-                        <option selected value="Normal">Normal</option>
-                        <option value="Disadvantage">Disadvantage</option>
-                    </select> |
-                    Vulnerable: <input type="checkbox" id="vuln" onclick="setAdv()"> |
-                    <button type="button" id="eng" onclick="setEngaged()">Engaged:</button>
-                    <input type="number" id="engNum"><br>
-                    <button type="button" id="directDamage" onclick="applyDirectDamage()">Apply</button>
-                    <input type="number" id="directDamageAmt"> damage to 
-                    <input type="number" id="directDamageNum" value="40"> members of unit.
-                    <button type="button" id="removeUnit" onclick="deleteUnit()">Remove Unit</button>
-                </div>
-            </p>
-        </fieldset>
-    </form>
-    <canvas id="canvas" width="1000" height="1000"></canvas>
-
-    <script src="lib/fabric.min.js"></script>
-    <script src="scripts/main.js"></script>
+                </p>
+                <p>
+                    <div id="perUnit" style="visibility: hidden;">
+                        <select id="adv" onchange="setAdv()">
+                            <option value="Advantage">Advantage</option>
+                            <option selected value="Normal">Normal</option>
+                            <option value="Disadvantage">Disadvantage</option>
+                        </select> |
+                        Vulnerable: <input type="checkbox" id="vuln" onclick="setAdv()"> |
+                        Cust Att Roll: <input type="number" id="custRoll" value="0" onchange="setCustRoll()"> || 
+                        <button type="button" id="removeUnit" onclick="deleteUnit()">Remove Unit</button><br>
+                        <button type="button" id="eng" onclick="setEngaged()">Engaged:</button>
+                        <input type="number" id="engNum"> |
+                        <button type="button" id="numChange" onclick="addNum()">Add/Rmv:</button>
+                        <input type="number" id="numDelta"> | 
+                        <button type="button" id="directDamage" onclick="stageDirectDamage()">Apply</button>
+                        <input type="number" id="directDamageAmt"> damage to 
+                        <input type="number" id="directDamageNum" value="1"> members of unit.
+                    </div>
+                </p>
+            </fieldset>
+        </form>
+    </div>
+    <div class="app-row">
+        <div class="app-row__text">
+            <div style="text-align: center;">
+                <p id="stat_block"></p>
+            </div>
+        </div>
+        <div class="app-row__canvas">
+            <canvas id="canvas" width="1000" height="750" style="float: left;"></canvas>
+        </div>
+    </div>
 </div>
+
+<script src="lib/fabric.min.js"></script>
+<script src="scripts/main.js"></script>
 </body>
 
 </html>
