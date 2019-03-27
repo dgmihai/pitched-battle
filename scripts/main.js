@@ -545,12 +545,10 @@ function setAdv() {
     xmlhttp.open("GET", "https://raw.githubusercontent.com/dgmihai/pitched-battle/master/resources/units.csv", true);
     xmlhttp.send();
 
-    console.log("Heh?" + remoteUnitTypes);
-
     if(!remoteUnitTypes) {
         var localUnitTypes = localStorage.getItem('unitTypes');
-        if(localUnitTypes != "null") {
-            console.log("Found saved unit types!");
+        if(localUnitTypes != "null" && localUnitTypes != "" && localUnitTypes != null) {
+            console.log("Found saved unit types.");
             populateUnitTypes(localUnitTypes);
         }
     }
@@ -559,48 +557,57 @@ function setAdv() {
 function populateUnitTypes(input) {
     var select = document.getElementById("types");
     select.options.length = 0;
-    // By lines
-    var lines = input.split('\r');
-    var count = 0;
-    var group = null;
-    for(var line = 0; line < lines.length; line++) {
-        console.debug("Line: " + lines[line]);
-        var cols = lines[line].split(',');
-        console.debug(cols);
-        if (cols[1] == "X") {
-            // New class of unit
-            if (group != null) select.appendChild(group);
-            group = document.createElement('optgroup');
-            group.setAttribute("label", cols[0]);
-            console.log("Group: " + group + " , " + cols[0]);
-            console.log("Creating group");
-        } else {
-            var newType = new UnitType( 
-                cols[0], // Name
-                parseInt(cols[1], 10), // Challenge Rating
-                // 2 - Tier
-                // 3 - Num
-                parseInt(cols[4], 10), // Armor Class
-                parseInt(cols[5], 10), // Health of Individual Number
-                parseInt(cols[6], 10), // Primary Attack Average Damage
-                // 7 - To Hit
-                // 8 - Number of Dice
-                // 9 - Damage Mod
-                parseInt(cols[10], 10), // Primary Attack Count or Mod (???)
-                // 11 - Roll Modifier
-                parseInt(cols[12], 10), // Str
-                parseInt(cols[13], 10), // Dex
-                parseInt(cols[14], 10), // Con
-                parseInt(cols[15], 10), // Wis
-                0, // Int
-                0, // Cha
-                parseInt(cols[16], 10), // Proficiency Bonus
-                toStat(cols[17]) // Main Attack Stat
-            );
-            unitTypes[cols[0]] = newType;
-            group.appendChild(new Option(newType.name));
-            count++;
+    try {
+        // By lines
+        var lines = input.split('\r');
+        var count = 0;
+        var group = null;
+        for(var line = 0; line < lines.length; line++) {
+            console.debug("Line: " + lines[line]);
+            var cols = lines[line].split(',');
+            console.debug(cols);
+            if (cols[1] == "X") {
+                // New class of unit
+                if (group != null) select.appendChild(group);
+                group = document.createElement('optgroup');
+                group.setAttribute("label", cols[0]);
+                console.log("Group: " + group + " , " + cols[0]);
+            } else {
+                var newType = new UnitType( 
+                    cols[0], // Name
+                    parseInt(cols[1], 10), // Challenge Rating
+                    // 2 - Tier
+                    // 3 - Num
+                    parseInt(cols[4], 10), // Armor Class
+                    parseInt(cols[5], 10), // Health of Individual Number
+                    parseInt(cols[6], 10), // Primary Attack Average Damage
+                    // 7 - To Hit
+                    // 8 - Number of Dice
+                    // 9 - Damage Mod
+                    parseInt(cols[10], 10), // Primary Attack Count or Mod (???)
+                    // 11 - Roll Modifier
+                    parseInt(cols[12], 10), // Str
+                    parseInt(cols[13], 10), // Dex
+                    parseInt(cols[14], 10), // Con
+                    parseInt(cols[15], 10), // Wis
+                    0, // Int
+                    0, // Cha
+                    parseInt(cols[16], 10), // Proficiency Bonus
+                    toStat(cols[17]) // Main Attack Stat
+                );
+                unitTypes[cols[0]] = newType;
+                group.appendChild(new Option(newType.name));
+                count++;
+            }
         }
+        document.getElementById('addUnit').style.visibility="visible";
+        document.getElementById('combatBar').style.visibility="visible";
+    } catch(err) {
+        console.error("Failed to populate saved unit types - upload a new set.");
+        select.options.length = 0;
+        unitTypes.length = 0;
+        document.getElementById('addUnit').style.visibility="hidden";
+        document.getElementById('combatBar').style.visibility="hidden";
     }
 }
 

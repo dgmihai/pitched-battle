@@ -13,15 +13,17 @@
     <div class="container__buttons">
         <form>
             <fieldset>
-                <legend>Alright, chaps! 0.0.7</legend>
+                <legend>Alright, chaps! 0.0.8</legend>
                 <input type="file" name="file" id="file">
                 <!--<input type="file" name="background" id="background">-->
                 <p>
-                    <input type="checkbox" id="roll" onclick="rollCombat()">Roll Combat
-                    <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
+                    <div id="combatBar" style="visibility: hidden;">
+                        <input type="checkbox" id="roll" onclick="rollCombat()">Roll Combat
+                        <button type="button" id="apply" onclick="applyCombat()">Apply Combat</button>
+                    </div>
                 </p>
                 <p>
-                    <div id="addUnit">
+                    <div id="addUnit" style="visibility: hidden;">
                         <input type="number" id="unitSize" placeholder="Size" value="30" min="5" onkeyup="fillEngaged()">
                         <input type="number" id="unitEngaged" placeholder="Width" value="10" min="1">
                         <select id = "types">
