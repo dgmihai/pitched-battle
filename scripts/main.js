@@ -63,7 +63,7 @@ var Stat = {
 }
 
 class UnitType {
-    constructor(name, cr, ac, hp, dmg, attks, str, dex, con, wis, itl, cha, prf, main) {
+    constructor(name, cr, ac, hp, dmg, attks, str, dex, con, wis, itl, cha, prf, main, image) {
         this.name = name;
         this.cr = cr;
         this.hp = hp;
@@ -79,7 +79,7 @@ class UnitType {
         this.cha = cha;
         this.prf = prf; //Proficiency
         this.morale = wis+2;
-        this.custRoll = 0;
+        this.image = image;
     }
 }
 
@@ -101,6 +101,7 @@ class Unit {
         this.integrity = "Fresh";
         this.adv = "Normal";
         this.vuln = false;
+        this.custRoll = 0;
     }
 
     setCustRoll(roll) {
@@ -561,17 +562,19 @@ function populateUnitTypes(input) {
         // By lines
         var lines = input.split('\r');
         var count = 0;
-        var group = null;
+        var optGroup = null;
+        var group = '';
         for(var line = 0; line < lines.length; line++) {
             console.debug("Line: " + lines[line]);
             var cols = lines[line].split(',');
             console.debug(cols);
             if (cols[1] == "X") {
                 // New class of unit
-                if (group != null) select.appendChild(group);
-                group = document.createElement('optgroup');
-                group.setAttribute("label", cols[0]);
-                console.log("Group: " + group + " , " + cols[0]);
+                if (optGroup != null) select.appendChild(optGroup);
+                optGroup = document.createElement('optgroup');
+                optGroup.setAttribute("label", cols[0]);
+                group = cols[0];
+                console.log("Group: " + group);
             } else {
                 var newType = new UnitType( 
                     cols[0], // Name
@@ -593,16 +596,18 @@ function populateUnitTypes(input) {
                     0, // Int
                     0, // Cha
                     parseInt(cols[16], 10), // Proficiency Bonus
-                    toStat(cols[17]) // Main Attack Stat
+                    toStat(cols[17]), // Main Attack Stat
+                    cols[18] //Image to use
                 );
                 unitTypes[cols[0]] = newType;
-                group.appendChild(new Option(newType.name));
+                optGroup.appendChild(new Option(newType.name));
                 count++;
             }
         }
         document.getElementById('addUnit').style.visibility="visible";
         document.getElementById('combatBar').style.visibility="visible";
     } catch(err) {
+        console.error(err);
         console.error("Failed to populate saved unit types - upload a new set.");
         select.options.length = 0;
         unitTypes.length = 0;
@@ -713,7 +718,8 @@ function addUnit(faction) {
     var type = unitTypes[typeList.options[typeList.selectedIndex].value];
     var stats = new Unit(unitCount + " Unit", type, unitSize, unitEngaged);
 
-    fabric.Image.fromURL('./img/heavyinf.png', function(img) {
+    var unitImg = './img/' + type.image + '.png';
+    fabric.Image.fromURL(unitImg, function(img) {
         img.set({
             scaleX: (unitEngaged*scale)/img.width,
             scaleY: (unitSize/unitEngaged*scale)/img.height,
