@@ -144,10 +144,11 @@ class Unit {
 
     // Apply staged losses/damage
     applyResults() {
+        var unitType = unitTypes[this.type];
         // Adjust HP for losses
-        console.debug("Reduced Damage to Loss: " + (-1 * this.getStagedLosses() * this.type.hp));
-        this.addTempDirectDamage(-1 * this.directLosses * this.type.hp);
-        this.addTempDamage(-1 * this.combatLosses * this.type.hp);
+        console.debug("Reduced Damage to Loss: " + (-1 * this.getStagedLosses() * unitType.hp));
+        this.addTempDirectDamage(-1 * this.directLosses * unitType.hp);
+        this.addTempDamage(-1 * this.combatLosses * unitType.hp);
         // Apply damage to HP pool
         this.hpDmg = this.hpDmg + this.tempHpDmg + this.tempHpApldDmg;
         // Reset staged damage
@@ -178,25 +179,26 @@ class Unit {
     }
 
     getMainAttBonus() {
-        var mod = this.type.prf;
-        switch (this.type.main) {
+        var unitType = unitTypes[this.type];
+        var mod = unitType.prf;
+        switch (unitType.main) {
           case Stat.STR:
-            mod = mod + this.type.str;
+            mod = mod + unitType.str;
             break;
           case Stat.DEX:
-            mod = mod + this.type.dex;
+            mod = mod + unitType.dex;
             break;
           case Stat.CON:
-            mod = mod + this.type.con;
+            mod = mod + unitType.con;
             break;
           case Stat.WIS:
-            mod = mod + this.type.wis;
+            mod = mod + unitType.wis;
             break;
           case Stat.ITL:
-            mod = mod + this.type.itl;
+            mod = mod + unitType.itl;
             break;
           case Stat.CHA:
-            mod = mod + this.type.cha;
+            mod = mod + unitType.cha;
         }
         return mod;
     }
@@ -413,7 +415,8 @@ function onOver(o) {
         o.target.setCoords();
         var pointer = canvas.getPointer(o.e);
         if ((hoverText == null || hoverText == undefined) && o.target.stats != undefined) {
-            var textInfo = o.target.stats.type.name + "\n";
+            var unitType = unitTypes[o.target.stats.type];
+            var textInfo = unitType.name + "\n";
             if(o.target.stats.adv != "Normal") textInfo = o.target.stats.adv + "\n";
             if(o.target.stats.vuln) textInfo = textInfo + "Vulnerable\n";
             textInfo = textInfo +
@@ -726,14 +729,15 @@ function addUnit(faction) {
     });
 
     var typeList = document.getElementById('types');
-    var type = unitTypes[typeList.options[typeList.selectedIndex].value];
-    var stats = new Unit(unitCount + " Unit", type, unitSize, unitEngaged);
+    var typeName = typeList.options[typeList.selectedIndex].value;
+    var unitType = unitTypes[typeName];
+    var stats = new Unit(unitCount + " Unit", typeName, unitSize, unitEngaged);
 
-    var opacity = (type.cr+3)*0.1
+    var opacity = (unitType.cr+3)*0.1
     console.log(opacity);
     rect.set('opacity', opacity);
 
-    var unitImg = './img/' + type.image + '.png';
+    var unitImg = './img/' + unitType.image + '.png';
     fabric.Image.fromURL(unitImg, function(img) {
         img.set({
             scaleX: (unitEngaged*scale)/img.width,
@@ -798,23 +802,24 @@ function displayLossText(unit) {
 
 // Unit stat block on the left
 function updateStatBlock(unit) {
+    var unitType = unitTypes[unit.stats.type];
     var text =
-        unit.stats.type.name +
-        "<br>CR: " + unit.stats.type.cr +
-        "<br><br>AC: " + unit.stats.type.ac +
-        "<br>HP: " + unit.stats.type.hp +
+        unitType.name +
+        "<br>CR: " + unitType.cr +
+        "<br><br>AC: " + unitType.ac +
+        "<br>HP: " + unitType.hp +
         "<br>To Hit: " + unit.stats.getMainAttBonus() +
-        "<br>Avg Dmg: " + unit.stats.type.dmg +
-        "<br>Roll: " + unit.stats.type.dice_num + "d" + unit.stats.type.dice_type + "+" +
-            unit.stats.getMainAttBonus() + " x " + unit.stats.type.attks +
+        "<br>Avg Dmg: " + unitType.dmg +
+        "<br>Roll: " + unitType.dice_num + "d" + unitType.dice_type + "+" +
+            unit.stats.getMainAttBonus() + " x " + unitType.attks +
         "<br><br>Sus. Dmg: " + unit.stats.hpDmg +
         "<br>Number: " + unit.stats.num + "/" + unit.stats.origNum +
-        "<br><br>STR: " + unit.stats.type.str +
-        "<br>DEX: " + unit.stats.type.dex +
-        "<br>CON: " + unit.stats.type.con +
-        "<br>WIS: " + unit.stats.type.wis +
-        "<br>INT: " + unit.stats.type.itl +
-        "<br>CHA: " + unit.stats.type.cha;
+        "<br><br>STR: " + unitType.str +
+        "<br>DEX: " + unitType.dex +
+        "<br>CON: " + unitType.con +
+        "<br>WIS: " + unitType.wis +
+        "<br>INT: " + unitType.itl +
+        "<br>CHA: " + unitType.cha;
     document.getElementById('stat_block').innerHTML = text;
 }
 
@@ -879,9 +884,9 @@ function stageAttacks(attacker, defender, split, advantage) {
         }
     }
     console.debug("Final Roll: " + roll);
-    console.debug("AC: " + defender.stats.type.ac);
-    var factor = Math.floor((roll - defender.stats.type.ac) / 5);
-    var dmg = (attacker.stats.type.dmg * Math.min(attacker.stats.num, attacker.stats.engaged))/split;
+    console.debug("AC: " + unitTypes[defender.stats.type].ac);
+    var factor = Math.floor((roll - unitTypes[defender.stats.type].ac) / 5);
+    var dmg = (unitTypes[attacker.stats.type].dmg * Math.min(attacker.stats.num, attacker.stats.engaged))/split;
     // Calculate potential damage
     console.debug("Pot Dmg: " + dmg);
     defender.stats.addTempDamage(factor >= 0 ? dmg : factor >= -1 ? dmg/2 : factor >= -2 ? dmg/4 : 0);
@@ -891,11 +896,12 @@ function stageLosses(unit, direct=false) {
     var num = Infinity;
     if(direct) num = unit.stats.tempApldDmgNum;
     // Calculate losses
-    var losses = Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num);
+    var unitType = unitTypes[unit.stats.type];
+    var losses = Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unitType.hp)), num);
     if(unit.stats.vuln)
         console.debug("Vulnerable!")
-        losses = Math.max(Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unit.stats.type.hp)), num));
-    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
+        losses = Math.max(Math.floor(Math.random() * Math.min(Math.floor((unit.stats.tempHpDmg+unit.stats.hpDmg+unit.stats.tempHpApldDmg)/unitType.hp)), num));
+    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unitType.hp*unit.stats.num);
     unit.stats.fitness = "Fit";
     if (percentDamage > 0.1) {
         // Bloodied
@@ -903,7 +909,7 @@ function stageLosses(unit, direct=false) {
         if (percentDamage > 0.3) {
             // Ravaged
             unit.stats.fitness = "Maimed";
-            losses = Math.max(losses, Math.floor(Math.random() * Math.floor(unit.stats.tempHpDmg/unit.stats.type.hp)));
+            losses = Math.max(losses, Math.floor(Math.random() * Math.floor(unit.stats.tempHpDmg/unitType.hp)));
             if (percentDamage > 0.5) {
                 // Crippled
                 unit.stats.fitness = "Crippled";
@@ -954,7 +960,7 @@ function applyUnitCombat(unit) {
         integrityRatio > 0.3 ? 'Critical Losses' :
         'Decimated';
     unit.stats.integrity = integrity;
-    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unit.stats.type.hp*unit.stats.num);
+    var percentDamage = (unit.stats.tempHpDmg+unit.stats.hpDmg)/(unitTypes[unit.stats.type].hp*unit.stats.num);
     // SCALING
     if (unit.stats.num < unit.stats.engaged) unit.stats.setEngaged(unit.stats.num);
     scaleUnit(unit);
@@ -965,3 +971,9 @@ function applyUnitCombat(unit) {
         removeFromBoard(unit);
     }
 }
+
+
+//=====================================================================
+// SERIALIZATION
+//=====================================================================
+
