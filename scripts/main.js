@@ -63,7 +63,7 @@ var Stat = {
 }
 
 class UnitType {
-    constructor(name, cr, ac, hp, dmg, attks, str, dex, con, wis, itl, cha, prf, main, image) {
+    constructor(name, cr, ac, hp, dmg, dice_num, dice_type, attks, str, dex, con, wis, itl, cha, prf, main, image) {
         this.name = name;
         this.cr = cr;
         this.hp = hp;
@@ -80,6 +80,8 @@ class UnitType {
         this.prf = prf; //Proficiency
         this.morale = wis+2;
         this.image = image;
+        this.dice_num = dice_num;
+        this.dice_type = dice_type;
     }
 }
 
@@ -287,7 +289,7 @@ function removeFromBoard(unit) {
     canvas.renderAll();
 }
 
-function updateLines(unit) {
+function updateLines(unit, coord) {
     if (unit.line != null) {
         var childLine = unit.line;
         childLine.set({ x1: coord.x, y1: coord.y });
@@ -325,7 +327,7 @@ function onObjMove(o) {
         o.target.lossText.bringToFront();
     }
     // Update lines
-    updateLines(o.target);
+    updateLines(o.target, coord);
     // Detect Collisions
     for (let obj of units) {
         if (obj != null) {
@@ -333,8 +335,8 @@ function onObjMove(o) {
             if (o.target.intersectsWithObject(obj) && o.target.faction != obj.faction) {
                 if (collision == -1) {
                     collisions.push([obj.id, o.target.id]);
-                    o.target.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
-                    obj.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
+                    updateAdv(o.target, true);
+                    updateAdv(obj, true);
                     rollCombat();
                 }
             } else {
@@ -343,13 +345,13 @@ function onObjMove(o) {
                     rollCombat();
                 }
                 if (getCollisions(obj.id).length == 0 && getConnections(null, obj.id).length == 0) {
-                    obj.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+                    updateAdv(obj, false);
                 }
             }
         }
     }
     if (getCollisions(o.target.id).length == 0 && getConnections(null, o.target.id).length == 0) {
-        o.target.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+        updateAdv(o.target, false);
     }
 }
 
@@ -366,7 +368,7 @@ function onDblClick(o) {
                 connections.splice(getConnections(o.target.id), 1);
                 rollCombat();
                 if (getCollisions(oldTarget.id).length == 0 && getConnections(null, oldTarget.id).length == 0) {
-                    oldTarget.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+                    updateAdv(oldTarget, false);
                 }
             }
             canvas.remove(o.target.get('line'));
@@ -394,7 +396,7 @@ function onDown(o) {
             var coord = o.target.getCenterPoint();
             line.set({ x2: coord.x, y2: coord.y, target: o.target });
             o.target.get('incomingLines').push(line);
-            o.target.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
+            updateAdv(o.target, true);
             connections.push([line.parent.id, o.target.id]);
             rollCombat();
             isDrawing = false;
@@ -514,24 +516,33 @@ function setAdv() {
     var selected = canvas.getActiveObject();
     selected.stats.setAdv(document.getElementById('adv').value,
                           document.getElementById('vuln').checked);
-    /*
-    if (selected.stats.vuln) {
-        selected.item(0).set('opacity', 0.25);
-    } else {
-        selected.item(0).set('opacity', 0.5);
-    }
-    switch (selected.stats.adv) {
-        case "Advantage":
-            selected.item(1).set('opacity', 1);
-        case "Normal":
-            selected.item(1).set('opacity', 0.75);
-        case "Disadvantage":
-            selected.item(1).set('opacity', 0);
-        default:
-            break;
-    }
-    */
+    updateAdv(selected, !(selected.item(0).get('stroke') == 'black'));
     rollCombat();
+}
+
+function updateAdv(unit, combat) {
+    if (unit.stats.vuln) {
+        unit.item(1).set('opacity', 0.5);
+    } else {
+        unit.item(1).set('opacity', 1);
+    }
+    if(combat) {
+        switch (unit.stats.adv) {
+            case "Advantage":
+                unit.item(0).set({'strokeWidth': 5, 'stroke': 'blue'});
+                break;
+            case "Normal":
+                unit.item(0).set({'strokeWidth': 5, 'stroke': 'yellow'});
+                break;
+            case "Disadvantage":
+                unit.item(0).set({'strokeWidth': 5, 'stroke': 'red'});
+                break;
+            default:
+                break;
+        }
+    } else {
+        unit.item(0).set({'strokeWidth': 2, 'stroke': 'black'});
+    }
 }
 
 {
@@ -585,10 +596,10 @@ function populateUnitTypes(input) {
                     parseInt(cols[5], 10), // Health of Individual Number
                     parseInt(cols[6], 10), // Primary Attack Average Damage
                     // 7 - To Hit
-                    // 8 - Number of Dice
-                    // 9 - Damage Mod
-                    parseInt(cols[10], 10), // Primary Attack Count or Mod (???)
-                    // 11 - Roll Modifier
+                    parseInt(cols[8], 10), // 8 - Number of Dice
+                    parseInt(cols[9], 10), // 9 - Damage Mod
+                    // 10 - Roll Modifier
+                    parseInt(cols[11], 10), // 11 - Primary Attack Count
                     parseInt(cols[12], 10), // Str
                     parseInt(cols[13], 10), // Dex
                     parseInt(cols[14], 10), // Con
@@ -709,7 +720,7 @@ function addUnit(faction) {
         originY: "center",
         centeredScaling: true,
         centeredRotation: true,
-        opacity: 0.5,
+        //opacity: 0.75,
         selectable: false,
         shadow: 'rgba(0,0,0,1) 0px 0px 20px'
     });
@@ -717,6 +728,10 @@ function addUnit(faction) {
     var typeList = document.getElementById('types');
     var type = unitTypes[typeList.options[typeList.selectedIndex].value];
     var stats = new Unit(unitCount + " Unit", type, unitSize, unitEngaged);
+
+    var opacity = (type.cr+3)*0.1
+    console.log(opacity);
+    rect.set('opacity', opacity);
 
     var unitImg = './img/' + type.image + '.png';
     fabric.Image.fromURL(unitImg, function(img) {
@@ -784,12 +799,14 @@ function displayLossText(unit) {
 // Unit stat block on the left
 function updateStatBlock(unit) {
     var text =
-        "Name: " + unit.stats.type.name +
+        unit.stats.type.name +
         "<br>CR: " + unit.stats.type.cr +
         "<br><br>AC: " + unit.stats.type.ac +
         "<br>HP: " + unit.stats.type.hp +
         "<br>To Hit: " + unit.stats.getMainAttBonus() +
         "<br>Avg Dmg: " + unit.stats.type.dmg +
+        "<br>Roll: " + unit.stats.type.dice_num + "d" + unit.stats.type.dice_type + "+" +
+            unit.stats.getMainAttBonus() + " x " + unit.stats.type.attks +
         "<br><br>Sus. Dmg: " + unit.stats.hpDmg +
         "<br>Number: " + unit.stats.num + "/" + unit.stats.origNum +
         "<br><br>STR: " + unit.stats.type.str +
