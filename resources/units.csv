@@ -1,1 +1,48 @@
-SPEARMEN,X,,,,,,,,,,,,,,,,Peasant Levy,0.5,0,1,16,25,5.5,4,1,6,2,1,2,0,0,0,2,STR,lightinfSpearmen,2,1,2,17,40,6.5,5,1,6,3,1,3,1,1,1,2,STR,lightinfSeasoned Pikemen,3,2,3,18,55,15,6,1,6,4,2,4,2,2,2,3,STR,heavyinfVeteran Phalanx,5,3,4,19,70,25.5,7,1,6,5,3,5,3,3,3,4,STR,heavyinfSWORDSMEN,X,,,,,,,,,,,,,,,,Levy Swordsmen,0.5,0,1,16,25,6.5,4,1,8,2,1,2,0,0,0,2,STR,lightinfSwordsmen,2,1,2,17,40,7.5,5,1,8,3,1,3,1,1,1,2,STR,lightinfMen-at-Arms,3,2,3,18,55,17,6,1,8,4,2,4,2,2,2,3,STR,heavyinfVeteran Sergeants,5,3,4,19,70,28.5,7,1,8,5,3,5,3,3,3,4,STR,heavyinfBOWMEN,X,,,,,,,,,,,,,,,,Peasant Bows,0.5,0,1,13,20,6.5,4,1,8,2,1,0,2,0,0,2,DEX,lightYeomen,2,1,2,14,32,7.5,5,1,8,3,1,1,3,1,1,2,DEX,lightRangers,3,2,3,15,44,17,6,1,8,4,2,2,4,2,2,3,DEX,heavyElite Rangers,5,3,4,16,56,28.5,7,1,8,5,3,3,5,3,3,4,DEX,heavyCROSSBOWMEN,X,,,,,,,,,,,,,,,,Levy Crossbows,0.5,0,1,13,20,7.5,4,1,10,2,1,0,2,0,0,2,DEX,lightCrossbowmen,2,1,2,14,32,8.5,5,1,10,3,1,1,3,1,1,2,DEX,lightSeasoned Crossbowmen,3,2,3,15,44,19,6,1,10,4,2,2,4,2,2,3,DEX,heavyAce Crossbowmen,4,3,4,16,56,31.5,7,1,10,5,3,3,5,3,3,4,DEX,heavyGUNMEN,X,,,,,,,,,,,,,,,,Arquebusiers,3,2,1,14,40,999,6,4,6,3,1,1,3,1,1,2,DEX,lightMusketeers,5,3,1,15,55,999,7,6,6,4,2,2,4,2,2,3,DEX,heavySnipers,6,4,2,16,70,999,8,4,6,5,3,3,5,3,3,4,DEX,heavyLIGHT CAVALRY,X,,,,,,,,,,,,,,,,Cavalry Raiders,3,4,2,17,57,7.5,6,1,8,3,1,3,1,1,1,2,STR,lightcavMounted Men-At-Arms,5,5,3,18,69,17,7,1,8,4,2,4,2,2,2,3,STR,lightcavHussars,6,6,4,19,81,28.5,8,1,8,5,3,5,3,3,3,4,STR,heavycavHEAVY CAVALRY,X,,,,,,,,,,,,,,,,Mounted Sergeants,5,5,2,18,65,9.5,6,1,12,3,1,3,1,1,1,2,STR,lightcavKnights,6,6,3,19,70,21,7,1,12,4,2,4,2,2,2,3,STR,heavycavPaladins,7,7,4,20,95,34,8,1,12,5,3,5,3,3,3,4,STR,heavycavFLYING ARCHERS,X,,,,,,,,,,,,,,,,Birdbows,2,3,2,16,32,6.5,5,1,8,3,1,3,1,1,1,2,DEX,lightAerial Rangers,3,4,3,17,44,15,7,1,8,4,2,4,2,2,2,3,DEX,heavyElite Fliers,5,5,4,18,56,25.5,8,1,8,5,3,5,3,3,3,4,DEX,heavyGREATSWORDSMEN,X,,,,,,,,,,,,,,,,Heavy Swordsmen,3,1,2,16,40,10,5,2,6,3,1,3,1,1,1,2,STR,lightinfGreatswords,4,2,3,17,55,22,6,2,6,4,2,4,2,2,2,3,STR,heavyinfLegendary Greatswords,5,3,4,18,70,36,7,2,6,5,3,5,3,3,3,4,STR,heavyinfZOMBIES,X,,,,,,,,,,,,,,,,Fresh,,-2,1,10,25,6.5,2,1,6,2,1,2,1,0,0,2,STR,lightinfHardy,,-1,2,11,40,15,3,1,6,3,2,3,2,1,1,3,STR,heavyinfWIGHTS,X,,,,,,,,,,,,,,,,Wight,,3,2,15,45,17,4,1,8,3,2,3,1,2,2,3,STR,heavyinfWight Bowmen,,3,2,15,45,17,4,1,8,3,2,1,3,2,2,3,DEX,heavySKELEMEN,X,,,,,,,,,,,,,,,,Stained Skeletons (INCOMPLETE),,1,2,15,40,15,4,,,3,,3,1,0,0,2,STR,lightinf
+SPEARMEN,X,,,,,,,,,,,,,,,,
+Peasant Levy,0.5,0,1,16,25,5.5,4,1,6,2,1,2,0,0,0,2,STR,lightinf
+Spearmen,2,1,2,17,40,6.5,5,1,6,3,1,3,1,1,1,2,STR,lightinf
+Seasoned Pikemen,3,2,3,18,55,15,6,1,6,4,2,4,2,2,2,3,STR,heavyinf
+Veteran Phalanx,5,3,4,19,70,25.5,7,1,6,5,3,5,3,3,3,4,STR,heavyinf
+SWORDSMEN,X,,,,,,,,,,,,,,,,
+Levy Swordsmen,0.5,0,1,16,25,6.5,4,1,8,2,1,2,0,0,0,2,STR,lightinf
+Swordsmen,2,1,2,17,40,7.5,5,1,8,3,1,3,1,1,1,2,STR,lightinf
+Men-at-Arms,3,2,3,18,55,17,6,1,8,4,2,4,2,2,2,3,STR,heavyinf
+Veteran Sergeants,5,3,4,19,70,28.5,7,1,8,5,3,5,3,3,3,4,STR,heavyinf
+BOWMEN,X,,,,,,,,,,,,,,,,
+Peasant Bows,0.5,0,1,13,20,6.5,4,1,8,2,1,0,2,0,0,2,DEX,light
+Yeomen,2,1,2,14,32,7.5,5,1,8,3,1,1,3,1,1,2,DEX,light
+Rangers,3,2,3,15,44,17,6,1,8,4,2,2,4,2,2,3,DEX,heavy
+Elite Rangers,5,3,4,16,56,28.5,7,1,8,5,3,3,5,3,3,4,DEX,heavy
+CROSSBOWMEN,X,,,,,,,,,,,,,,,,
+Levy Crossbows,0.5,0,1,13,20,7.5,4,1,10,2,1,0,2,0,0,2,DEX,light
+Crossbowmen,2,1,2,14,32,8.5,5,1,10,3,1,1,3,1,1,2,DEX,light
+Seasoned Crossbowmen,3,2,3,15,44,19,6,1,10,4,2,2,4,2,2,3,DEX,heavy
+Ace Crossbowmen,4,3,4,16,56,31.5,7,1,10,5,3,3,5,3,3,4,DEX,heavy
+GUNMEN,X,,,,,,,,,,,,,,,,
+Arquebusiers,3,2,1,14,40,999,6,4,6,3,1,1,3,1,1,2,DEX,light
+Musketeers,5,3,1,15,55,999,7,6,6,4,2,2,4,2,2,3,DEX,heavy
+Snipers,6,4,2,16,70,999,8,4,6,5,3,3,5,3,3,4,DEX,heavy
+LIGHT CAVALRY,X,,,,,,,,,,,,,,,,
+Cavalry Raiders,3,4,2,17,57,7.5,6,1,8,3,1,3,1,1,1,2,STR,lightcav
+Mounted Men-At-Arms,5,5,3,18,69,17,7,1,8,4,2,4,2,2,2,3,STR,lightcav
+Hussars,6,6,4,19,81,28.5,8,1,8,5,3,5,3,3,3,4,STR,heavycav
+HEAVY CAVALRY,X,,,,,,,,,,,,,,,,
+Mounted Sergeants,5,5,2,18,65,9.5,6,1,12,3,1,3,1,1,1,2,STR,lightcav
+Knights,6,6,3,19,70,21,7,1,12,4,2,4,2,2,2,3,STR,heavycav
+Paladins,7,7,4,20,95,34,8,1,12,5,3,5,3,3,3,4,STR,heavycav
+FLYING ARCHERS,X,,,,,,,,,,,,,,,,
+Birdbows,2,3,2,14,32,6.5,5,1,8,3,1,3,1,1,1,2,DEX,light
+Aerial Rangers,3,4,3,15,44,15,7,1,8,4,2,4,2,2,2,3,DEX,heavy
+Elite Fliers,5,5,4,16,56,25.5,8,1,8,5,3,5,3,3,3,4,DEX,heavy
+GREATSWORDSMEN,X,,,,,,,,,,,,,,,,
+Heavy Swordsmen,3,1,2,16,40,10,5,2,6,3,1,3,1,1,1,2,STR,lightinf
+Greatswords,4,2,3,17,55,22,6,2,6,4,2,4,2,2,2,3,STR,heavyinf
+Legendary Greatswords,5,3,4,18,70,36,7,2,6,5,3,5,3,3,3,4,STR,heavyinf
+ZOMBIES,X,,,,,,,,,,,,,,,,
+Fresh,,-2,1,10,25,6.5,2,1,6,2,1,2,1,0,0,2,STR,lightinf
+Hardy,,-1,2,11,40,15,3,1,6,3,2,3,2,1,1,3,STR,heavyinf
+WIGHTS,X,,,,,,,,,,,,,,,,
+Wight,,3,2,15,45,17,4,1,8,3,2,3,1,2,2,3,STR,heavyinf
+Wight Bowmen,,3,2,15,45,17,4,1,8,3,2,1,3,2,2,3,DEX,heavy
+SKELEMEN,X,,,,,,,,,,,,,,,,
+Stained Skeletons (INCOMPLETE),,1,2,15,40,15,4,,,3,,3,1,0,0,2,STR,lightinf
