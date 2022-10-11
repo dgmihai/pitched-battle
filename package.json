@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "fabric": "^2.7.0"
+    "fabric": "^5.2.4"
   }
 }
